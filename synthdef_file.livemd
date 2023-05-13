@@ -53,7 +53,7 @@ defmodule SynthDef do
 
   @doc """
   Equivalent of SynthDef.new(name, ugenGraphFunc, rates, prependArgs, variants, metadata) in supercollider lang 
-  
+
   The parameters are:
   - *name* - A String (i.e. "name"). This name will be used to refer to the SynthDef when creating a Synth based upon it, and should be unique.
   - *ugen_specs_list* - specifies how the def's UGens are interconnected.
@@ -65,7 +65,6 @@ defmodule SynthDef do
       ugen_count: length(ugen_specs_list)
     }
   end
-
 end
 
 defmodule ParamName do
@@ -75,14 +74,11 @@ defmodule ParamName do
   ]a
 end
 
-
-{ |out|
-    var outArray;
-    outArray = [SinOsc.ar(440, 0, 0.2), SinOsc.ar(442, 0, 0.2)];
-    Out.ar(out, outArray)
-}
-
-
+# { |out|
+#     var outArray;
+#     outArray = [SinOsc.ar(440, 0, 0.2), SinOsc.ar(442, 0, 0.2)];
+#     Out.ar(out, outArray)
+# }
 
 defmodule UgenSpec do
   @moduledoc """
@@ -176,8 +172,8 @@ end
 
 ```elixir
 file = "/Users/haubie/Development/supercollider/ambient.scsyndef"
-file = "/Users/haubie/Development/supercollider/pink-ambient.scsyndef"
-file = "/Users/haubie/Development/supercollider/hoover.scsyndef"
+# file = "/Users/haubie/Development/supercollider/pink-ambient.scsyndef"
+# file = "/Users/haubie/Development/supercollider/hoover.scsyndef"
 bin_data = File.read!(file)
 ```
 

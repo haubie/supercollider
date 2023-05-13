@@ -1,501 +1,8 @@
-# Supercollider
-
-```elixir
-Mix.install([
-  {:osc, "~> 0.1.2"},
-  {:ex_doc, "~> 0.27"}
-  # {:portmidi, "~> 4.2.0"}
-])
-```
-
-## Introduction
-
-```elixir
-# TEST PORT MIDI
-
-# PortMidi.devices()
-```
-
-### Supercollider synth server
-
-Supercollider comes with a synth server (scserver and supernova)
-
-More information: https://depts.washington.edu/dxscdoc/Help/Reference/Server-Architecture.html
-
-There is also a forum dedicated to the scsynth: https://scsynth.org/
-
-### Open Sound Control protocol
-
-The Supercollider synth server can be communicated with via Open Sound Control (OSC).
-
-Supercollider accepts OSC commands via TCP or UDP.
-
-More information: https://www.OpenSoundControl.org
-
-### Gen UTP
-
-Erlang includes the library gen_utp which will be used in this livebook to communicate with Supercollider.
-
-More information: https://www.erlang.org/doc/man/gen_udp.html
-
-### Setup
-
-```elixir
-server_ip = '127.0.0.1'
-server_hostname = 'localhost'
-server_port = 57110
-
-server_name = :sc3_server
-```
-
-In this first example we'll use the hostname, port and some test data to communicate with scserver.
-
-scserver needs to be live.
-
-Let's start by opening up a UDP socket. The :gen_udp.open function associates a UDP port number (Port) with the calling process. In this case port 0.
-
-```elixir
-{:ok, socket} = :gen_udp.open(0, [:binary, {:active, true}])
-```
-
-Now lets send a message using OSC.
-
-### Ask the scserver for it's status
-
-The server's status can be requested thought the `/status` command.
-
-It returns a list which contains the following 9 pieces of information:
-
-* `int` 1. unused.
-* `int` number of unit generators.
-* `int` number of synths.
-* `int` number of groups.
-* `int` number of loaded synth definitions.
-* `float`   average percent CPU usage for signal processing
-* `float`   peak percent CPU usage for signal processing
-* `double`  nominal sample rate
-* `double`  actual sample rate
-
-```elixir
-response_labels = [
-  "unused",
-  "number of unit generators",
-  "number of synths",
-  "number of groups",
-  "number of loaded synth definitions",
-  "average percent CPU usage for signal processing",
-  "peak percent CPU usage for signal processing",
-  "nominal sample rate",
-  "actual sample rate"
-]
-
-{:ok, osc_data} =
-  %OSC.Message{address: "/status", arguments: []}
-  |> OSC.encode()
-
-:gen_udp.send(socket, server_hostname, server_port, osc_data)
-
-receive do
-  {:udp, _process_port, _ip_addr, _port_num, data} ->
-    packet = data |> OSC.decode!()
-    %{address: "/status.reply", arguments: arguments} = packet.contents |> List.first()
-    Enum.zip(response_labels, arguments)
-
-  msg ->
-    IO.inspect(msg, label: "Non matching UDP message")
-end
-```
-
-### Request scserver version
-
-Server version information is returned as a list with information in the following order:
-
-* `string`  Program name. May be "scsynth" or "supernova".
-* `int` Major version number. Equivalent to sclang's Main.scVersionMajor.
-* `int` Minor version number. Equivalent to sclang's Main.scVersionMinor.
-* `string`  Patch version name. Equivalent to the sclang code "." ++ Main.scVersionPatch ++ Main.scVersionTweak.
-* `string`  Git branch name.
-* `string`  First seven hex digits of the commit hash.
-
-```elixir
-response_labels = [
-  "Program name. May be \"scsynth\" or \"supernova\".",
-  "Major version number. Equivalent to sclang's Main.scVersionMajor.",
-  "Minor version number. Equivalent to sclang's Main.scVersionMinor.",
-  "Patch version name. Equivalent to the sclang code \".\" ++ Main.scVersionPatch ++ Main.scVersionTweak.",
-  "Git branch name.",
-  "First seven hex digits of the commit hash."
-]
-
-{:ok, osc_data} =
-  %OSC.Message{address: "/version", arguments: []}
-  |> OSC.encode()
-
-:gen_udp.send(socket, server_hostname, server_port, osc_data)
-
-receive do
-  {:udp, _process_port, _ip_addr, _port_num, res} ->
-    packet = res |> OSC.decode!()
-    %{address: "/version.reply", arguments: arguments} = packet.contents |> List.first()
-    Enum.zip(response_labels, arguments)
-
-  msg ->
-    IO.inspect(msg, label: "Non matching UDP message")
-end
-```
-
-## Audio
-
-### Create a new default synth and generate a tone
-
-The OSC address `/s_new` is used to create a new synth.
-
-The 5 arguments it takes in the following order are:
-
-* `string`  synth definition name
-* `int` synth ID
-* `int` add action (0,1,2, 3 or 4 see below)
-* `int` add target ID
-* N *   
-  * `int` or string a control index or name
-  * `float` or int or string    floating point and integer arguments are interpreted as control value. a symbol argument consisting of the letter 'c' or 'a' (for control or audio) followed by the bus's index.
-
-The add actions integer values behave as follows:
-
-* 0 add the new node to the the head of the group specified by the add target ID.
-* 1 add the new node to the the tail of the group specified by the add target ID.
-* 2 add the new node just before the node specified by the add target ID.
-* 3 add the new node just after the node specified by the add target ID.
-* 4 the new node replaces the node specified by the add target ID. The target node is freed.
-
-```elixir
-# Send a message to play the default sound with a new synth
-synth_definition_name = "default"
-# or could used nextNodeID
-synth_node_id = 100
-add_action = 1
-add_target_id = 0
-
-{:ok, osc_data} =
-  %OSC.Message{
-    address: "/s_new",
-    arguments: [synth_definition_name, synth_node_id, add_action, add_target_id]
-  }
-  |> OSC.encode()
-
-:gen_udp.send(socket, server_hostname, server_port, osc_data)
-
-# receive do
-#   {:udp, _process_port, _ip_addr, _port_num, res} ->
-#     packet = res |> OSC.decode!()
-#     packet
-
-#   msg ->
-#     IO.inspect(msg, label: "Non matching UDP message")
-# end
-```
-
-### Stop the tone
-
-Now lets stop the sound using /n_free and parsing the synth_node_id as the single argument.
-
-```elixir
-{:ok, osc_data} =
-  %OSC.Message{address: "/n_free", arguments: [synth_node_id]}
-  |> OSC.encode()
-
-:gen_udp.send(socket, server_hostname, server_port, osc_data)
-```
-
-## Recieve notifications from the server
-
-The `/notify` address can take up to two agruments:
-
-* `int` 1 to receive notifications, 0 to stop receiving them.
-* `int` client ID (optional)
-
-```elixir
-client_id = 100
-
-{:ok, osc_data} =
-  %OSC.Message{address: "/notify", arguments: [1, client_id]}
-  |> OSC.encode()
-
-:gen_udp.send(socket, server_hostname, server_port, osc_data)
-
-receive do
-  {:udp, _process_port, _ip_addr, _port_num, res} ->
-    packet = res |> OSC.decode!()
-    IO.inspect(packet)
-
-  msg ->
-    IO.inspect(msg, label: "Non matching UDP message")
-end
-```
-
-### Quit and close socket
-
-```elixir
-# Send 
-{:ok, osc_data} =
-  %OSC.Message{address: "/quit", arguments: []}
-  |> OSC.encode()
-
-:gen_udp.send(socket, server_hostname, server_port, osc_data)
-
-receive do
-  {:udp, _process_port, _ip_addr, _port_num, res} ->
-    packet = res |> OSC.decode!()
-    packet
-
-  msg ->
-    IO.inspect(msg, label: "Quit")
-end
-
-# Close socket
-:gen_udp.close(socket)
-```
-
-<!-- livebook:{"branch_parent_index":0} -->
-
-## Refactoring
-
-This section we start refactoring are expirement above into:
-
-* A struct which holds some state for our sound server
-* Functions to handle messages generated from scserver.
-
-````elixir
-defmodule Supercollider.SoundServer do
-  use GenServer
-
-  @scsynth_binary_location "/Applications/SuperCollider.app/Contents/Resources/scsynth"
-  @supernova_binary_location "/Applications/SuperCollider.app/Contents/Resources/supernova"
-
-  @moduledoc """
-  This module is a:
-  - GenServer which is used to communicate with Supercollider's scserver
-  - Struct which holds the server's basic state and configuration.
-  """
-
-  alias Supercollider.Command, as: Command
-  alias Supercollider.Response, as: Response
-
-  # Struct definitions
-
-  @doc """
-  The SoundServer struct colds the servers basic state:
-  - ip: the IP address of scserver. This defaults to '127.0.0.1'
-  - hostname: the hostname of the server. This defaults to 'localhost'.
-  - port: the port used to communicate with scserver. This defaults to 57110.
-  - socket: the UDP socket used to communicate with scserver, once the connection is open.
-  """
-  defstruct ip: '127.0.0.1',
-            hostname: 'localhost',
-            port: 57110,
-            socket: nil
-
-  # Genserver callbacks
-
-  @impl true
-  def init(soundserver \\ %__MODULE__{}) do
-    IO.inspect(soundserver, label: "INIT")
-    new_state = run(soundserver)
-    {:ok, new_state}
-  end
-
-  # Genserver handlers
-
-  # @impl true
-  # def handle_call(:pop, _from, [head | tail]) do
-  #   {:reply, head, tail}
-  # end
-
-  @impl true
-  def handle_cast({:command, command_name, args}, state) do
-    new_state = apply(Command, command_name, [state] ++ args)
-    {:noreply, new_state}
-  end
-
-  # def command(pid, command_name, args) when not is_list(args) do
-  #   GenServer.cast(pid, {:command, command_name, [args]})
-  # end
-
-  def command(pid, command_name) do
-    GenServer.cast(pid, {:command, command_name, []})
-  end
-
-  def command(pid, command_name, args) when is_list(args) do
-    GenServer.cast(pid, {:command, command_name, args})
-  end
-
-  def command(pid, command_name, args) do
-    GenServer.cast(pid, {:command, command_name, [args]})
-  end
-
-  @impl true
-  def handle_cast(:run, state) do
-    new_state = run(state)
-    {:noreply, new_state}
-  end
-
-  @impl true
-  def handle_cast(:quit, state) do
-    new_state = Command.quit(state)
-    {:noreply, new_state}
-  end
-
-  @impl true
-  def handle_cast(:tone, state) do
-    new_state = Command.tone(state)
-    {:noreply, new_state}
-  end
-
-  @impl true
-  def handle_cast({:synth, attr}, state) do
-    new_state = Command.synth(state, attr)
-    {:noreply, new_state}
-  end
-
-  @impl true
-  def handle_cast(:free_node, state) do
-    new_state = Command.free_node(state, 100)
-    {:noreply, new_state}
-  end
-
-  @impl true
-  def handle_cast(:status, state) do
-    new_state = Command.status(state)
-    {:noreply, new_state}
-  end
-
-  @doc """
-  When sending calls to scserver though UDP, a response message may be returned in the following format:
-
-  `{:udp, process_port, ip_addr, port_num, osc_response}`
-
-  The `handle_info/2` callback will forward these messages to `Response.process_osc_message/2` for handling.
-  The handler code must return the updated SoundServer struct for a valid state to be maintained.
-  """
-  @impl true
-  def handle_info(msg, state) do
-    new_state =
-      case msg do
-        {:udp, _process_port, _ip_addr, _port_num, res} ->
-          Response.process_osc_message(state, res)
-
-        _ ->
-          state
-      end
-
-    {:noreply, new_state}
-  end
-
-  # Core
-  @doc """
-  A convience function to create a new SoundServer struct.
-
-  The struct holds the basic state and configuration.
-
-  The default values can be overrided by providing a keyword list using the same keys used in the struct. For example:
-
-    ```
-    SoundServer.new(hostname: 'othersoundserver')
-    ```
-
-    will override the default hostname of 'localhost'.
-
-  For more information, see the SoundServer struct documentation.
-  """
-  def new(opts \\ []), do: struct(__MODULE__, opts)
-
-  @doc """
-  Open's a UDP connection. Unless a port number is provided, by default it will use port 0.
-
-  Uses :gen_udp.open from Erlang which associates a UDP port number with the calling process (this GenServer).
-  """
-  def open(port_num \\ 0), do: :gen_udp.open(port_num, [:binary, {:active, true}])
-
-  @doc """
-  Runs the server. By default, this function is executed when init is called.
-
-  This function:
-  - checks if server is loaded, otherwise attempts to boot it
-  - opens a USP socket for Open Sound Communication (OSC) communication with the server.
-  """
-  def run(sserver \\ %__MODULE__{}) do
-    with {:ok, socket} <- open(),
-         :ok <- maybe_boot_scsynth(%{sserver | socket: socket}) do
-      %__MODULE__{sserver | socket: socket}
-    else
-      _any -> {:error, "Could not be initialised"}
-    end
-  end
-
-  @doc """
-  Checks if scsynth is loaded by calling `scsynth_booted?/1`. If not it will attempt to boot it asynchronously using `Task.async/1`.
-
-  TODO: The location of the scysnth binary is currently set in the `@scsynth_binary_location` but this will need to be moved out into a config or using different search strategies for different OSes.
-
-  """
-  def maybe_boot_scsynth(soundserver) do
-    IO.puts("scsynth - maybe boot, waiting up to 5 seconds to see if loaded")
-
-    if !scsynth_booted?(soundserver) do
-      IO.inspect("scynth - attempting boot up")
-
-      boot_cmd = fn ->
-        System.cmd(@scsynth_binary_location, ["-u", Integer.to_string(soundserver.port)])
-      end
-
-      Task.async(boot_cmd)
-
-      :ok
-    else
-      :ok
-    end
-  end
-
-  @doc """
-  Checks if scsynth is booted.
-
-  It does this by sending the OSC command '/status' through the previously opened UDP port to the address that scsynth is expected.
-
-  It then waits up to 5 seconds to see if a UDP packet is returned. 
-
-  This function returns:
-  - `true` if if a '/status.reply' message was recieved via UDP.
-  - `false` if either a non-compliant message is recieved or no message is recieved after 5 seconds. In this case the scsynth has been considered not to be loaded.
-
-  """
-  def scsynth_booted?(soundserver) do
-    Command.send_osc(soundserver, "/status")
-
-    receive do
-      {:udp, _process_port, _ip_addr, _port_num, data} ->
-        packet = data |> OSC.decode!()
-        %{address: "/status.reply", arguments: arguments} = packet.contents |> List.first()
-        IO.puts("scsynth - already booted")
-        true
-
-      msg ->
-        IO.inspect(msg, label: "scsynth - Non matching UDP message - probably not booted?")
-        false
-    after
-      5_000 ->
-        IO.puts("scsynth - nothing booted after 5 seconds. Try booting scsynth manually.")
-        false
-    end
-  end
-end
-````
-
-```elixir
-defmodule Supercollider.Command do
+defmodule SuperCollider.SoundServer.Command do
   @moduledoc """
   ## SuperCollider Server Synth Engine Commands
 
-  This module is used to send OSC commands to supercollider's server (scsynth or supernova) via UDP.
+  This module is used to send OSC commands to SuperCollider's server (scsynth or supernova) via UDP.
 
   These commands make use of the server configuration and state details in %SoundServer{}, and is most cases, a %SoundServer{} struct is passed as the first parameter in these funtions.
 
@@ -522,11 +29,11 @@ defmodule Supercollider.Command do
   Note that this library uses the OSC style string format to send commands, rather than command numbers.
   """
 
-  alias Supercollider.SoundServer, as: SoundServer
+  alias SuperCollider.SoundServer, as: SoundServer
 
   ## ##################################
   ## SCSYNTH COMMUNICATION
-  ## ################################## 
+  ## ##################################
 
   ## Helpers
 
@@ -592,14 +99,14 @@ defmodule Supercollider.Command do
     - 0 to stop receiving them: scserver will stop sending notifications.
   - client_id: an integer representing the client. This is optional.
 
-  From Supercollider documentation:
+  From SuperCollider documentation:
 
     Replies to sender with /done /notify clientID [maxLogins] when complete.
 
     If this client has registered for notifications before, this may be the same ID. Otherwise it will be a new one.
-    
+
     Clients can use this ID in multi-client situations to avoid conflicts when allocating resources such as node IDs, bus indices, and buffer numbers.
-    
+
     maxLogins is only returned when the client ID argument is supplied in this command. maxLogins is not supported by supernova.
 
   """
@@ -610,12 +117,12 @@ defmodule Supercollider.Command do
 
   ## ##################################
   ## TOP LEVEL COMMANDS
-  ## ################################## 
+  ## ##################################
 
   @doc section: :top_level_commands
   @doc """
     Query the servers status.
-    
+
     Replies to sender with an '/status.reply' message with a list containing the following:
 
     - `int` 1. unused.
@@ -648,7 +155,7 @@ defmodule Supercollider.Command do
 
   @doc section: :top_level_commands
   @doc """
-  Displays incoming OSC messages. 
+  Displays incoming OSC messages.
 
   Turns on and off printing of the contents of incoming Open Sound Control messages. This is useful when debugging your command stream.
 
@@ -729,7 +236,7 @@ defmodule Supercollider.Command do
 
   ## ##################################
   ## SYNTH DEFINITION COMMANDS
-  ## ################################## 
+  ## ##################################
 
   @doc section: :synth_commands
   @doc """
@@ -791,19 +298,19 @@ defmodule Supercollider.Command do
 
   ## ##################################
   ## NODE COMMANDS
-  ## ################################## 
+  ## ##################################
 
   @doc section: :node_commands
   @doc """
   Deletes a node. There is is also an alias to this function called free_node/2.
 
-  From the supercollider docs:
+  From the SuperCollider docs:
 
     Stops a node abruptly, removes it from its group, and frees its memory.
     A list of node IDs may be specified.
     Using this method can cause a click if the node is not silent at the time it is freed.
 
-  Takes the node id (integer) to delete as the second parameter. 
+  Takes the node id (integer) to delete as the second parameter.
   """
   def n_free(soundserver, node_id) do
     soundserver
@@ -836,7 +343,7 @@ defmodule Supercollider.Command do
 
   If the node is a group, then it sets the controls of every node in the group.
 
-  The second parameter is the node id (integer). 
+  The second parameter is the node id (integer).
 
   The third parameter takes a list of pairs of control indices and values and sets the controls to those values.
 
@@ -854,7 +361,7 @@ defmodule Supercollider.Command do
   @doc """
   Set ranges of a node's control value(s).
 
-  From the supercollider documentation:
+  From the SuperCollider documentation:
     Set contiguous ranges of control indices to sets of values.
     For each range, the starting control index is given followed by the number of controls to change, followed by the values.
     If the node is a group, then it sets the controls of every node in the group.
@@ -973,7 +480,7 @@ defmodule Supercollider.Command do
   @doc """
   Move and order a list of nodes. Moves the listed nodes to the location specified by the target and add action, and place them in the order specified. Nodes which have already been freed will be ignored.
 
-  The second, third and fourth parameters are: 
+  The second, third and fourth parameters are:
 
   - `int`	add action (0,1,2 or 3 see below)
   - `int`	add target ID
@@ -992,7 +499,7 @@ defmodule Supercollider.Command do
 
   ## ##################################
   ## SYNTH COMMANDS
-  ## ################################## 
+  ## ##################################
 
   @doc section: :synth_commands
   @doc """
@@ -1006,7 +513,7 @@ defmodule Supercollider.Command do
   - int	synth ID
   - int	add action (0,1,2, 3 or 4 see below)
   - int	add target ID
-  - N *	
+  - N *
     - int or string	a control index or name
     - float or int or string	floating point and integer arguments are interpreted as control value. a symbol argument consisting of the letter 'c' or 'a' (for control or audio) followed by the bus's index.
 
@@ -1110,7 +617,7 @@ defmodule Supercollider.Command do
 
   ## ##################################
   ## GROUP COMMANDS
-  ## ################################## 
+  ## ##################################
 
   @doc section: :group_commands
   @doc """
@@ -1206,7 +713,7 @@ defmodule Supercollider.Command do
 
   ## ##################################
   ## UNIT GENERATOR COMMANDS
-  ## ################################## 
+  ## ##################################
 
   @doc section: :ug_commands
   @doc """
@@ -1219,163 +726,3 @@ defmodule Supercollider.Command do
     |> send_osc("/u_cmd", [node_id, ug_index, command_name] ++ args)
   end
 end
-```
-
-```elixir
-defmodule Supercollider.Response do
-  def process_osc_message(soundserver, res) do
-    packet = res |> OSC.decode!()
-
-    case packet.contents |> List.first() do
-      %{address: "/version.reply", arguments: arguments} ->
-        IO.inspect(arguments, label: "Version information request")
-
-      %{address: "/status.reply", arguments: arguments} ->
-        IO.inspect(arguments, label: "Status information request")
-
-      %{address: "/fail", arguments: arguments} ->
-        IO.inspect(arguments, label: "Failure message from server")
-
-      %{address: "/done", arguments: arguments} ->
-        IO.inspect(arguments, label: "Sound server (scsynth or supernova) has shutdown")
-
-      %{address: "/synced", arguments: arguments} ->
-        IO.inspect(arguments,
-          label:
-            "All asynchronous commands received before this one (see command code) have completed"
-        )
-
-      msg ->
-        IO.inspect(msg, label: "Some other osc message")
-    end
-
-    soundserver
-  end
-end
-```
-
-```elixir
-alias Supercollider.SoundServer
-
-{:ok, pid} = GenServer.start_link(SoundServer, SoundServer.new())
-```
-
-```elixir
-GenServer.cast(pid, :tone)
-```
-
-```elixir
-GenServer.cast(pid, :free_node)
-```
-
-```elixir
-SoundServer.command(pid, :tone)
-```
-
-```elixir
-SoundServer.command(pid, :free_node, 100)
-```
-
-```elixir
-400..1500//128
-|> Enum.each(fn freq -> GenServer.cast(pid, {:synth, ["freq", freq]}) end)
-```
-
-```elixir
-GenServer.cast(pid, :status)
-```
-
-```elixir
-SoundServer.command(pid, :status)
-```
-
-```elixir
-# SoundServer.command(pid, :n_free, [[100,101,102]])
-
-# SoundServer.command(pid, :s_new, ["white-ambient", 102, 1, 0, []])
-# :timer.sleep(500)
-
-SoundServer.command(pid, :s_new, ["ambient", 100, 1, 0, []])
-:timer.sleep(1000)
-
-# SoundServer.command(pid, :s_new, ["pink-ambient", 101, 1, 0, []])
-# :timer.sleep(1000)
-
-SoundServer.command(pid, :n_free, [[100, 101, 102]])
-```
-
-```elixir
-# Create a basic 'play' synthdef and send it to the server_hostname
-
-# Create the synthdef
-# (
-# SynthDef("sine", { arg freq=800;
-#     var osc;
-#     osc = SinOsc.ar(freq, 0, 0.1); // 800 Hz sine oscillator
-#     Out.ar(0, osc); // send output to audio bus zero.
-# }).writeDefFile; // write the def to disk in the default directory synthdefs/
-# )
-
-# Send the SynthDef to the server.
-# s.sendSynthDef("sine");
-
-# Start the sound. The /s_new command creates a new Synth which is an instance of the "sine" SynthDef. Each synth running on the server needs to have a unique ID. The simplest and safest way to do this is to get an ID from the server's NodeIDAllocator. This will automatically allow IDs to be reused, and will prevent conflicts both with your own nodes, and with nodes created automatically for purposes such as visual scoping and recording. Each synth needs to be installed in a Group. We install it in group one which is the default group. There is a group zero, called the RootNode, which contains the default group, but it is generally best not to use it as doing so can result in order of execution issues with automatically created nodes such as those mentioned above. (For more detail see the Default Group, RootNode, and Order of execution helpfiles.)
-# s.sendMsg("/s_new", "sine", x = s.nextNodeID, 1, 1);
-SoundServer.command(pid, :s_new, ["sine", 600, 1, 1, ["freq", 300]])
-
-:timer.sleep(1000)
-
-# Stop the sound.
-# s.sendMsg("/n_free", x);
-SoundServer.command(pid, :n_free, [600])
-```
-
-```elixir
-SoundServer.command(pid, :s_new, ["SimpleSign", 600, 1, 0, ["freq", 200]])
-SoundServer.command(pid, :s_new, ["SimpleSign", 601, 1, 0, ["freq", 150]])
-SoundServer.command(pid, :s_new, ["SimpleSign", 602, 1, 0, ["freq", 400]])
-SoundServer.command(pid, :s_new, ["SimpleSign", 603, 1, 0, ["freq", 800]])
-
-:timer.sleep(1000)
-SoundServer.command(pid, :s_new, ["SimpleSign", 604, 1, 0, ["freq", 950]])
-
-:timer.sleep(1000)
-SoundServer.command(pid, :s_new, ["SimpleSign", 605, 1, 0, ["freq", 1500]])
-
-:timer.sleep(500)
-SoundServer.command(pid, :s_new, ["SimpleSign", 606, 1, 0, ["freq", 1800]])
-
-:timer.sleep(500)
-SoundServer.command(pid, :s_new, ["SimpleSign", 607, 1, 0, ["freq", 2000]])
-
-:timer.sleep(3000)
-SoundServer.command(pid, :n_free, [[600, 601, 602, 603, 604, 605, 606, 607]])
-```
-
-```elixir
-SoundServer.command(pid, :s_new, ["SimpleSign", 900, 1, 0, ["freq", 150]])
-:timer.sleep(3000)
-SoundServer.command(pid, :n_free, [900])
-```
-
-```elixir
-SoundServer.command(pid, :s_new, ["starhit", 900, 1, 0, ["freq", 150]])
-:timer.sleep(3000)
-SoundServer.command(pid, :n_free, [900])
-```
-
-```elixir
-GenServer.cast(pid, :quit)
-```
-
-```elixir
-GenServer.stop(pid)
-```
-
-```elixir
-ss = SoundServer.init()
-```
-
-```elixir
-ss |> SoundServer.quit()
-```
