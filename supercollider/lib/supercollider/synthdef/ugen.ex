@@ -24,6 +24,11 @@ defmodule SuperCollider.SynthDef.UGen do
     outputs_count output_specs_list
   ]a
 
+  @doc"""
+  The parse function is used as part deconstructing UGen binary data in SuperCollider scsyndef v2 files.
+
+  It is not usually accessed directly, but automatically called via `SuperCollider.SynthDef.ScFileparse(filename)`.
+  """
   def parse({synth_def_struct, binary_data}) do
 
     <<
@@ -40,59 +45,11 @@ defmodule SuperCollider.SynthDef.UGen do
   end
 
 
-
-
-
-  def parse_input_spec(binary, number) do
-    parse_input_spec(binary, number, 0, [])
-  end
-
-  def parse_input_spec(binary, number, count, acc) when count < number do
-    <<
-      ugen_index::signed-big-integer-32,
-      ugen_constant::big-integer-32,
-      # ugen_output_index::big-integer-32,
-      rest::binary
-    >> = binary
-
-    # See: https://github.com/ooesili/sorceress/blob/40388e37b074abe2b837b9d45a12a5674c99435a/src/synthdef/decoder.rs#L166
-    # if ugen_index == -1, do: ugen_constant
-
-    input_spec = [
-      %{
-        _enum_count: count,
-        ugen_index: ugen_index,
-        ugen_constant: ugen_constant,
-        # ugen_output_index: ugen_output_index
-      }
-    ]
-
-    parse_input_spec(rest, number, count + 1, input_spec ++ acc)
-  end
-
-  def parse_input_spec(binary, _number, _count, acc) do
-    {acc, binary}
-  end
-
-  def parse_output_spec(binary, number) do
-    parse_output_spec(binary, number, 0, [])
-  end
-
-  def parse_output_spec(binary, number, count, acc) when count < number do
-    <<output_calc_rate::big-integer-8, rest::binary>> = binary
-    output_spec = [%{count: count, calculation_rate: output_calc_rate}]
-    parse_output_spec(rest, number, count + 1, output_spec ++ acc)
-  end
-
-  def parse_output_spec(binary, _number, _count, acc) do
-    {acc, binary}
-  end
-
-  def parse_ugens(binary, number) do
+  defp parse_ugens(binary, number) do
     parse_ugens(binary, number, 0, [])
   end
 
-  def parse_ugens(binary, number, count, acc) when count < number do
+  defp parse_ugens(binary, number, count, acc) when count < number do
     <<
       ugen_class_name_length::big-integer-8,
       ugen_class_name::binary-size(ugen_class_name_length),
@@ -122,9 +79,60 @@ defmodule SuperCollider.SynthDef.UGen do
     parse_ugens(binary_output_specs, number, count + 1, ugen ++ acc)
   end
 
-  def parse_ugens(binary, _number, _count, acc) do
-    {acc, binary}
+  defp parse_ugens(binary, _number, _count, acc) do
+    {acc |> Enum.reverse(), binary}
   end
 
+
+  defp parse_input_spec(binary, number) do
+    parse_input_spec(binary, number, 0, [])
+  end
+
+  defp parse_input_spec(binary, number, count, acc) when count < number do
+    <<
+      ugen_index_or_constant_flag::signed-big-integer-32,
+      index_of_ugen_OR_index_of_output_gen::big-integer-32,
+      rest::binary
+    >> = binary
+
+    input_spec =
+      case ugen_index_or_constant_flag do
+        -1 ->
+          # CONSTANT IF -1
+            %{
+              _enum_count: count,
+              type: :constant,
+              index: index_of_ugen_OR_index_of_output_gen,
+            }
+
+        _ -> # OTHERWISE ITS A UGEN
+            %{
+              _enum_count: count,
+              type: :ugen,
+              index: ugen_index_or_constant_flag,
+              output_index: index_of_ugen_OR_index_of_output_gen
+            }
+      end
+
+    parse_input_spec(rest, number, count + 1, [input_spec] ++ acc)
+  end
+
+  defp parse_input_spec(binary, _number, _count, acc) do
+    {acc |> Enum.reverse(), binary}
+  end
+
+  defp parse_output_spec(binary, number) do
+    parse_output_spec(binary, number, 0, [])
+  end
+
+  defp parse_output_spec(binary, number, count, acc) when count < number do
+    <<output_calc_rate::big-integer-8, rest::binary>> = binary
+    output_spec = [%{_enum_count: count, calculation_rate: output_calc_rate}]
+    parse_output_spec(rest, number, count + 1, output_spec ++ acc)
+  end
+
+  defp parse_output_spec(binary, _number, _count, acc) do
+    {acc |> Enum.reverse(), binary}
+  end
 
 end

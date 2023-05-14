@@ -1,126 +1,64 @@
 defmodule SuperCollider.SynthDef.Parser do
+  @moduledoc """
+  This is a helper function to parse values from a scsyndef file
+  """
 
-  alias SuperCollider.SynthDef.ScFile
-  alias SuperCollider.SynthDef
+  ## PARSER HELPERS
 
-  # 1 Parse file header
-  # 2 Parse synthdefs
+  @doc """
+  Helper function for parsing pstrings.
 
-  def parse(filename \\ "/Users/haubie/Development/supercollider/ambient.scsyndef") do
+  A pstring is SuperColliders string format, which starts with a 8-bit integer holding the length of the string (`string_length`), followed by a binary of `string_length` with the string data.
 
-    # Parse file header
-    {sc_file_struct, binary_data} =
-      ScFile.open(filename)
-      |> ScFile.parse_header()
-
-    # Parse each synthdef
-    synth_defs = parse_synthdef(binary_data, [], sc_file_struct.synth_defs_count)
-
-    %ScFile{sc_file_struct | synth_defs: synth_defs}
-
-  end
-
-  def parse_synthdef(_binary_data, acc, 0) do
-    acc
-    |> Enum.reverse()
-  end
-
-  def parse_synthdef(binary_data, acc, num) when num > 0 do
-    {synthdef_struct, data} = SynthDef.parse(binary_data)
-    parse_synthdef(data, [synthdef_struct] ++ acc, num-1)
-  end
-
-
-  def parse_input_spec(binary, number) do
-    parse_input_spec(binary, number, 0, [])
-  end
-
-  def parse_input_spec(binary, number, count, acc) when count < number do
+  Returns a tuple with string as the first element, and the remainder of the binary data as the second parameter, e.g.:
+  `{int_value, binary_data}`.
+  """
+  def parse_pstring(binary) do
     <<
-      ugen_index::signed-big-integer-32,
-      ugen_constant::big-integer-32,
-      ugen_output_index::big-integer-32,
+      string_length::big-integer-8,
+      string_value::binary-size(string_length),
       rest::binary
     >> = binary
 
-    input_spec = [
-      %{
-        count: count,
-        ugen_index: ugen_index,
-        ugen_constant: ugen_constant,
-        ugen_output_index: ugen_output_index
-      }
-    ]
-
-    parse_input_spec(rest, number, count + 1, input_spec ++ acc)
+    {string_value, rest}
   end
 
-  def parse_input_spec(binary, _number, _count, acc) do
-    {acc, binary}
-  end
+  @doc """
+  Helper function for parsing 32 bit integers.
 
-  def parse_output_spec(binary, number) do
-    parse_output_spec(binary, number, 0, [])
-  end
-
-  def parse_output_spec(binary, number, count, acc) when count < number do
-    <<output_calc_rate::big-integer-8, rest::binary>> = binary
-    output_spec = [%{count: count, calculation_rate: output_calc_rate}]
-    parse_output_spec(rest, number, count + 1, output_spec ++ acc)
-  end
-
-  def parse_output_spec(binary, _number, _count, acc) do
-    {acc, binary}
-  end
-
-  def parse_ugens(binary, number) do
-    parse_ugens(binary, number, 0, [])
-  end
-
-  def parse_ugens(binary, number, count, acc) when count < number do
+  Returns a tuple with a 32-big integer as the first element, and the remainder of the binary data as the second parameter, e.g.:
+  `{int_value, binary_data}`.
+  """
+  def parse_integer_32(binary) do
     <<
-      ugen_class_name_length::big-integer-8,
-      ugen_class_name::binary-size(ugen_class_name_length),
-      calculation_rate::big-integer-8,
-      num_inputs::big-integer-32,
-      num_outputs::big-integer-32,
-      special_index::big-integer-16,
-      binary_ugen_rest::binary
+      value::big-signed-32,
+      rest::binary
     >> = binary
-
-    {input_specs, binary_input_specs} = parse_input_spec(binary_ugen_rest, num_inputs)
-    {output_specs, binary_output_specs} = parse_output_spec(binary_input_specs, num_outputs)
-
-    ugen = [
-      %{
-        ugen_class_name_length: ugen_class_name_length,
-        ugen_class_name: ugen_class_name,
-        calculation_rate: calculation_rate,
-        num_inputs: num_inputs,
-        num_outputs: num_outputs,
-        special_index: special_index,
-        input_specs: input_specs,
-        output_specs: output_specs
-      }
-    ]
-
-    parse_ugens(binary_output_specs, number, count + 1, ugen ++ acc)
+    {value, rest}
   end
 
-  def parse_ugens(binary, _number, _count, acc) do
-    {acc, binary}
+  @doc """
+  Helper function for parsing 16 bit integers.
+
+  Returns a tuple with a 16-bit integer as the first element, and the remainder of the binary data as the second parameter, e.g.:
+  `{int_value, binary_data}`.
+  """
+  def parse_integer_16(binary) do
+    <<
+      value::big-signed-16,
+      rest::binary
+    >> = binary
+    {value, rest}
   end
-
-
-
-  ## PARSER HELPERS
 
   @doc """
   Helper function for parsing multiple big-float-32s in a sequence.
   * binary: hold the binary data
   * number: number of floats to parse in a sequenece
-  """
 
+  Returns a tuple with a list of the floats as the first element, and the remainder of the binary data as the second parameter, e.g.:
+  `{float_list, binary_data}`.
+  """
   def parse_floats(binary, number) do
     parse_floats(binary, number, 0, [])
   end
@@ -128,26 +66,29 @@ defmodule SuperCollider.SynthDef.Parser do
   def parse_floats(binary, number, const_index, acc) when const_index < number do
     <<constant_value::big-float-32, rest_binary::binary>> = binary
 
-    # IO.puts "i(#{const_index}):\t#{constant_value}"
     constant = {const_index, constant_value |> Float.round(3)}
 
     parse_floats(rest_binary, number, const_index + 1, [constant] ++ acc)
   end
 
   def parse_floats(binary, _number, _const_index, acc) do
-    {acc |> Enum.sort(), binary}
+    {acc |> Enum.reverse(), binary}
   end
 
 
-  @doc"""
-  Helper function to parse each named parameter
-  """
+   @doc """
+    Helper function for parsing multiple key-value pairs in a sequence, where the key is a string and the value is an integer.
+    * binary: hold the binary data
+    * number: number of key-integer value pairs to parse in a sequenece.
 
-  def parse_param_name_value_pairs(binary, number) do
-    parse_param_name_value_pairs(binary, number, 0, [])
+    Returns a tuple with a list of the floats as the first element, and the remainder of the binary data as the second parameter, e.g.:
+    `{float_list, binary_data}`.
+    """
+  def parse_name_integer_pairs(binary, number) do
+    parse_name_integer_pairs(binary, number, 0, [])
   end
 
-  def parse_param_name_value_pairs(binary, number, count, acc) when count < number do
+  def parse_name_integer_pairs(binary, number, count, acc) when count < number do
     <<
       param_name_length::big-integer-8,
       param_name::binary-size(param_name_length),
@@ -157,12 +98,42 @@ defmodule SuperCollider.SynthDef.Parser do
 
     param = %{_enum_index: count, parameter_name: param_name, parameter_index: param_index_value}
 
-    parse_param_name_value_pairs(rest_binary, number, count + 1, [param] ++ acc)
+    parse_name_integer_pairs(rest_binary, number, count + 1, [param] ++ acc)
   end
 
-  def parse_param_name_value_pairs(binary, _number, _count, acc) do
-    {acc |> Enum.sort(), binary}
+  def parse_name_integer_pairs(binary, _number, _count, acc) do
+    {acc |> Enum.reverse(), binary}
   end
+
+    @doc """
+    Helper function for parsing multiple key-value pairs in a sequence, where the key is a string and the value is a a float.
+    * binary: hold the binary data
+    * number: number of key-float value pairs to parse in a sequenece.
+
+    Returns a tuple with a list of the floats as the first element, and the remainder of the binary data as the second parameter, e.g.:
+    `{float_list, binary_data}`.
+    """
+
+  def parse_name_float_pairs(binary, number) do
+    parse_name_float_pairs(binary, [], number)
+  end
+
+  def parse_name_float_pairs(binary, acc, number) when number > 0 do
+    <<
+      name_length::big-integer-8,
+      name::binary-size(name_length),
+      index_value::big-float-32,
+      rest_binary::binary
+    >> = binary
+
+    param = %{name: name, index_value: index_value |> Float.round(3)}
+    parse_name_float_pairs(rest_binary, [param] ++ acc, number-1)
+  end
+
+  def parse_name_float_pairs(binary, acc, 0) do
+   {acc |> Enum.reverse(), binary}
+  end
+
 
 
 end
