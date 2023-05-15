@@ -46,6 +46,31 @@ defmodule SuperCollider.SynthDef do
 
 
   @doc """
+  Defines a new SynthDef.
+
+  A SynthDef conisits of the following
+  * name (of synthdef)
+  * constants
+  * parameters
+  * parameter names
+  * UGen specs
+  * varient specs
+
+  ## Example
+  ```
+  synthdef = SynthDef.new("example", fn (params) ->
+       freq = params.named("name", 440.0); # index 0
+       vol = params.named("vol", 1.0); # index 1
+       ugen::Out::ar().channels(ugen::SinOsc::ar().freq(freq).mul(vol))
+      end);
+  ```
+  """
+  def new(name) do
+    %SynthDef{name: name}
+  end
+
+
+  @doc """
   Parses syndef binary data. This function is not usually called directly, but is automatically called as part of `ScFile.parse(filename)`.
 
   Parsing of the SynthDef is in the follwoing order:

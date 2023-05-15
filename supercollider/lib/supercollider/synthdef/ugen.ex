@@ -12,6 +12,7 @@ defmodule SuperCollider.SynthDef.UGen do
 
   alias SuperCollider.SynthDef
   alias SuperCollider.SynthDef.UGen
+  alias SuperCollider.SynthDef.Parser
 
   defstruct ~w[
     class_name
@@ -30,12 +31,7 @@ defmodule SuperCollider.SynthDef.UGen do
   It is not usually accessed directly, but automatically called via `SuperCollider.SynthDef.ScFileparse(filename)`.
   """
   def parse({synth_def_struct, binary_data}) do
-
-    <<
-      num_ugens::big-integer-32,
-      rest_bin_data::binary
-    >> = binary_data
-
+    {num_ugens, rest_bin_data} = Parser.parse_integer_32(binary_data)
     {ugen_specs_list, rem_binary} = parse_ugens(rest_bin_data, num_ugens)
 
     {
@@ -43,7 +39,6 @@ defmodule SuperCollider.SynthDef.UGen do
       rem_binary
     }
   end
-
 
   defp parse_ugens(binary, number) do
     parse_ugens(binary, number, 0, [])
@@ -65,7 +60,6 @@ defmodule SuperCollider.SynthDef.UGen do
 
     ugen = [
       %UGen{
-        # ugen_class_name_length: ugen_class_name_length,
         class_name: ugen_class_name,
         calculation_rate: calculation_rate,
         inputs_count: num_inputs,
