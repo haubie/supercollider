@@ -110,6 +110,8 @@ defmodule SuperCollider.SynthDef.ScFile do
 #   file = "/Users/haubie/Development/supercollider/ambient.scsyndef"
 # file = "/Users/haubie/Development/supercollider/pink-ambient.scsyndef"
 # file = "/Users/haubie/Development/supercollider/hoover.scsyndef"
+# file = "/Users/haubie/Development/supercollider/closedhat.scsyndef"
+
   def parse(filename \\ "/Users/haubie/Development/supercollider/ambient.scsyndef") do
     # Parse file header
     File.read!(filename) |> decode()
