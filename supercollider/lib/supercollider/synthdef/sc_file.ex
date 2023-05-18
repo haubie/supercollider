@@ -106,9 +106,18 @@ defmodule SuperCollider.SynthDef.ScFile do
       ]
   ```
   """
+
+#   file = "/Users/haubie/Development/supercollider/ambient.scsyndef"
+# file = "/Users/haubie/Development/supercollider/pink-ambient.scsyndef"
+# file = "/Users/haubie/Development/supercollider/hoover.scsyndef"
   def parse(filename \\ "/Users/haubie/Development/supercollider/ambient.scsyndef") do
     # Parse file header
-    case File.read!(filename) |> parse_header() do
+    File.read!(filename) |> decode()
+  end
+
+  def decode(binary) do
+    # Parse file header
+    case binary |> parse_header() do
 
       {:error, _reason}=error -> error
 
@@ -121,6 +130,15 @@ defmodule SuperCollider.SynthDef.ScFile do
     end
   end
 
+
+  def encode(synthdefs) when is_list(synthdefs) do
+    num_synth_defs = length(synthdefs)
+    encode_header(num_synth_defs) <> SynthDef.encode(synthdefs)
+  end
+
+  def encode(synthdef) do
+    encode_header(1) <> SynthDef.encode(synthdef)
+  end
 
 
   # The header consists of:
@@ -146,6 +164,13 @@ defmodule SuperCollider.SynthDef.ScFile do
 
   end
 
+  defp encode_header(num_synth_defs) do
+    <<
+      @type_id::binary,
+      @file_version_2::big-signed-32,
+      num_synth_defs::big-signed-16
+    >>
+  end
 
   # The synthdef is the main data structure of the scsyndef file.
 

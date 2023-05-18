@@ -84,7 +84,7 @@ defmodule SuperCollider.SynthDef do
   """
   def parse(bin_data) do
 
-    {synth_def, _bin} =
+    # {synth_def, _bin} =
       {%SynthDef{}, bin_data}
       |> parse_synthdef_name()
       |> parse_synthdef_constants()
@@ -93,11 +93,16 @@ defmodule SuperCollider.SynthDef do
       |> UGen.parse()
       |> parse_synthdef_varients()
 
-    synth_def
+    # synth_def
+  end
+
+  def encode(synthdefs) when is_list(synthdefs) do
+    synthdefs
+    |> Enum.map(fn synthdef -> encode(synthdef) end)
+    |> Enum.join(<<>>)
   end
 
   def encode(synthdef) do
-
       Encoder.write_pstring(synthdef.name) <>
       Encoder.write_32(synthdef.constant_count) <>
       Encoder.write_floats(synthdef.constant_values_list) <>
@@ -108,9 +113,7 @@ defmodule SuperCollider.SynthDef do
       UGen.encode(synthdef.ugen_count, synthdef.ugen_specs_list) <>
       Encoder.write_16(synthdef.varient_count) <>
       Encoder.write_name_float_pairs(synthdef.varient_specs_list)
-
   end
-
 
 
   defp parse_synthdef_name({synth_def_struct, bin_data}) do
