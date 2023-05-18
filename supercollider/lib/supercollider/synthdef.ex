@@ -23,6 +23,7 @@ defmodule SuperCollider.SynthDef do
   alias SuperCollider.SynthDef
   alias SuperCollider.SynthDef.Parser
   alias SuperCollider.SynthDef.UGen
+  alias SuperCollider.SynthDef.Encoder
 
   # The name of the synth definition
   # All of the constants used in the UGen graph
@@ -82,14 +83,35 @@ defmodule SuperCollider.SynthDef do
   * varient specs
   """
   def parse(bin_data) do
-    {%SynthDef{}, bin_data}
-    |> parse_synthdef_name()
-    |> parse_synthdef_constants()
-    |> parse_synthdef_parameters()
-    |> parse_synthdef_parameter_names()
-    |> UGen.parse()
-    |> parse_synthdef_varients()
+
+    {synth_def, _bin} =
+      {%SynthDef{}, bin_data}
+      |> parse_synthdef_name()
+      |> parse_synthdef_constants()
+      |> parse_synthdef_parameters()
+      |> parse_synthdef_parameter_names()
+      |> UGen.parse()
+      |> parse_synthdef_varients()
+
+    synth_def
   end
+
+  def encode(synthdef) do
+
+      Encoder.write_pstring(synthdef.name) <>
+      Encoder.write_32(synthdef.constant_count) <>
+      Encoder.write_floats(synthdef.constant_values_list) <>
+      Encoder.write_32(synthdef.parameter_count) <>
+      Encoder.write_floats(synthdef.parameter_values_list) <>
+      Encoder.write_32(synthdef.parameter_names_count) <>
+      Encoder.write_name_integer_pairs(synthdef.parameter_names_list) <>
+      UGen.encode(synthdef.ugen_count, synthdef.ugen_specs_list) <>
+      Encoder.write_16(synthdef.varient_count) <>
+      Encoder.write_name_float_pairs(synthdef.varient_specs_list)
+
+  end
+
+
 
   defp parse_synthdef_name({synth_def_struct, bin_data}) do
     {synth_name, rest_synthdef} = Parser.parse_pstring(bin_data)

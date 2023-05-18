@@ -13,6 +13,7 @@ defmodule SuperCollider.SynthDef.UGen do
   alias SuperCollider.SynthDef
   alias SuperCollider.SynthDef.UGen
   alias SuperCollider.SynthDef.Parser
+  alias SuperCollider.SynthDef.Encoder
 
   defstruct ~w[
     class_name
@@ -39,6 +40,58 @@ defmodule SuperCollider.SynthDef.UGen do
       rem_binary
     }
   end
+
+
+  def encode(ugen_count, ugen_specs_list) do
+
+    specs =
+      ugen_specs_list
+      |> Enum.map(fn ugen ->
+
+        ugen_header =
+          <<
+            String.length(ugen.class_name)::big-integer-8,
+            ugen.class_name::binary,
+            ugen.calculation_rate::big-integer-8,
+            ugen.inputs_count::big-integer-32,
+            ugen.outputs_count::big-integer-32,
+            ugen.special_index::big-integer-16
+          >>
+
+        ugen_input_specs =
+          ugen.input_specs_list
+          |> Enum.map(fn spec -> encode_input_spec(spec) end)
+          |> Enum.join(<<>>)
+
+        ugen_output_specs =
+          ugen.output_specs_list
+          |> Enum.map(fn spec ->
+            <<spec.calculation_rate::big-integer-8>>
+          end)
+          |> Enum.join(<<>>)
+
+        ugen_header <> ugen_input_specs <> ugen_output_specs
+      end)
+      |> List.flatten()
+      |> Enum.join(<<>>)
+
+      Encoder.write_32(ugen_count) <> specs
+  end
+
+  defp encode_input_spec(%{type: :constant, index: index_of_ugen_OR_index_of_output_gen}) do
+    <<
+      (-1)::signed-big-integer-32,
+      index_of_ugen_OR_index_of_output_gen::big-integer-32
+    >>
+  end
+
+  defp encode_input_spec(%{type: :ugen, index: ugen_index_or_constant_flag, output_index: index_of_ugen_OR_index_of_output_gen}) do
+    <<
+      ugen_index_or_constant_flag::signed-big-integer-32,
+      index_of_ugen_OR_index_of_output_gen::big-integer-32
+    >>
+  end
+
 
   defp parse_ugens(binary, number) do
     parse_ugens(binary, number, 0, [])

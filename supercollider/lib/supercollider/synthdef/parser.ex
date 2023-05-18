@@ -66,7 +66,8 @@ defmodule SuperCollider.SynthDef.Parser do
   def parse_floats(binary, number, const_index, acc) when const_index < number do
     <<constant_value::big-float-32, rest_binary::binary>> = binary
 
-    constant = {const_index, constant_value |> Float.round(3)}
+    # constant = {const_index, constant_value |> Float.round(3)}
+    constant = constant_value |> Float.round(3)
 
     parse_floats(rest_binary, number, const_index + 1, [constant] ++ acc)
   end
