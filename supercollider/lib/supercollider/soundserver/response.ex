@@ -2,6 +2,8 @@ defmodule SuperCollider.SoundServer.Response do
   def process_osc_message(soundserver, res) do
     packet = res |> OSC.decode!()
 
+    IO.inspect packet, label: "OSC packet recieved"
+
     case packet.contents |> List.first() do
       %{address: "/version.reply", arguments: arguments} ->
         IO.inspect(arguments, label: "Version information request")

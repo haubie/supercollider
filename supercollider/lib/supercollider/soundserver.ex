@@ -3,6 +3,7 @@ defmodule SuperCollider.SoundServer do
 
   @scsynth_binary_location "/Applications/SuperCollider.app/Contents/Resources/scsynth"
   @supernova_binary_location "/Applications/SuperCollider.app/Contents/Resources/supernova"
+  @commands SuperCollider.SoundServer.Command.__info__(:functions) |> Enum.map(fn {f_name, _arity} -> f_name end) |> Enum.uniq()
 
   @moduledoc """
   This module is a:
@@ -10,6 +11,7 @@ defmodule SuperCollider.SoundServer do
   - Struct which holds the server's basic state and configuration.
   """
 
+  alias SuperCollider.SoundServer
   alias SuperCollider.SoundServer.Command, as: Command
   alias SuperCollider.SoundServer.Response, as: Response
 
@@ -36,6 +38,13 @@ defmodule SuperCollider.SoundServer do
     {:ok, new_state}
   end
 
+  @doc """
+  Starts
+  """
+  def start_link(opts \\ []) do
+    GenServer.start_link(SoundServer, SoundServer.new(opts))
+  end
+
   # Genserver handlers
 
   # @impl true
@@ -43,8 +52,15 @@ defmodule SuperCollider.SoundServer do
   #   {:reply, head, tail}
   # end
 
+  defp is_valid_command?(command_name), do: command_name in @commands
+
+
   @impl true
   def handle_cast({:command, command_name, args}, state) do
+    # new_state =
+    #   if is_valid_command?(command_name),
+    #     do: apply(Command, command_name, [state] ++ args),
+    #     else: state # don't update state, invalid command
     new_state = apply(Command, command_name, [state] ++ args)
     {:noreply, new_state}
   end
@@ -54,15 +70,46 @@ defmodule SuperCollider.SoundServer do
   # end
 
   def command(pid, command_name) do
-    GenServer.cast(pid, {:command, command_name, []})
+    # if is_valid_command?(command_name) do
+    #   GenServer.cast(pid, {:command, command_name, []})
+    # else
+    #   {:error, "Invalid SuperCollider command."}
+    # end
+
+    if :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 1) do
+      GenServer.cast(pid, {:command, command_name, []})
+    else
+      {:error, "Invalid SuperCollider command or arity."}
+    end
   end
 
   def command(pid, command_name, args) when is_list(args) do
-    GenServer.cast(pid, {:command, command_name, args})
+    # if is_valid_command?(command_name) do
+    #   GenServer.cast(pid, {:command, command_name, args})
+    # else
+    #   {:error, "Invalid SuperCollider command."}
+    # end
+
+    if :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, length(args)+1) do
+      GenServer.cast(pid, {:command, command_name, args})
+    else
+      {:error, "Invalid SuperCollider command or arity."}
+    end
+
   end
 
   def command(pid, command_name, args) do
-    GenServer.cast(pid, {:command, command_name, [args]})
+    # if is_valid_command?(command_name) do
+    #   GenServer.cast(pid, {:command, command_name, [args]})
+    # else
+    #   {:error, "Invalid SuperCollider command."}
+    # end
+
+    if :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 2) do
+      GenServer.cast(pid, {:command, command_name, [args]})
+    else
+      {:error, "Invalid SuperCollider command or arity."}
+    end
   end
 
   @impl true
