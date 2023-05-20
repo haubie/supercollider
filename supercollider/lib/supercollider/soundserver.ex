@@ -3,7 +3,7 @@ defmodule SuperCollider.SoundServer do
 
   @scsynth_binary_location "/Applications/SuperCollider.app/Contents/Resources/scsynth"
   @supernova_binary_location "/Applications/SuperCollider.app/Contents/Resources/supernova"
-  @commands SuperCollider.SoundServer.Command.__info__(:functions) |> Enum.map(fn {f_name, _arity} -> f_name end) |> Enum.uniq()
+  # @commands SuperCollider.SoundServer.Command.__info__(:functions) |> Enum.map(fn {f_name, _arity} -> f_name end) |> Enum.uniq()
 
   @moduledoc """
   This module is a:
@@ -27,7 +27,8 @@ defmodule SuperCollider.SoundServer do
   defstruct ip: '127.0.0.1',
             hostname: 'localhost',
             port: 57110,
-            socket: nil
+            socket: nil,
+            responses: %{}
 
   # Genserver callbacks
 
@@ -46,13 +47,27 @@ defmodule SuperCollider.SoundServer do
   end
 
   # Genserver handlers
-
   # @impl true
-  # def handle_call(:pop, _from, [head | tail]) do
-  #   {:reply, head, tail}
+  # def handle_call(:test, from, state) do
+  #   IO.inspect from, label: "FROM"
+
+  #   state = %{state | from: from}
+
+  #   new_state = apply(Command, :version, [state])
+  #   IO.inspect new_state, label: "Command issued"
+
+  #   {:reply, "Hello", new_state}
   # end
 
-  defp is_valid_command?(command_name), do: command_name in @commands
+  @impl true
+  def handle_call(:state, _from, state) do
+    {:reply, state, state}
+  end
+
+  def state(pid) do
+    GenServer.call(pid, :state)
+  end
+
 
 
   @impl true
@@ -76,6 +91,7 @@ defmodule SuperCollider.SoundServer do
     #   {:error, "Invalid SuperCollider command."}
     # end
 
+    IO.inspect :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 1), label: "0 params"
     if :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 1) do
       GenServer.cast(pid, {:command, command_name, []})
     else
@@ -90,7 +106,9 @@ defmodule SuperCollider.SoundServer do
     #   {:error, "Invalid SuperCollider command."}
     # end
 
-    if :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, length(args)+1) do
+    IO.inspect :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 2), label: "list of #{length(args)}, 1 params"
+
+    if :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, length(args)) do
       GenServer.cast(pid, {:command, command_name, args})
     else
       {:error, "Invalid SuperCollider command or arity."}
@@ -104,8 +122,9 @@ defmodule SuperCollider.SoundServer do
     # else
     #   {:error, "Invalid SuperCollider command."}
     # end
+    IO.inspect :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 2), label: "1 params"
 
-    if :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 2) do
+    if :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 2)  do
       GenServer.cast(pid, {:command, command_name, [args]})
     else
       {:error, "Invalid SuperCollider command or arity."}
