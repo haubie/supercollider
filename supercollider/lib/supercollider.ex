@@ -1,10 +1,34 @@
 defmodule SuperCollider do
   @moduledoc """
-  Documentation for `SuperCollider`.
+  This is the main `SuperCollider` module.
+
+  With this module, you can:
+  * start a `SuperCollider.SoundServer`, which is a GenServer used to communicate with scynth and recieve messages from it.
+  * issue commands
+  * access SuperColliders state.
+
+  This module aims to minimise the need to pass a pid around representing the active `SoundServer` by storing it's PID as a persisitient term under `:supercollider_soundserver`. Calling `SuperCollider.start()` will automatically store the pid of the SoundServer as a persistient term.
+
+  ## Example
+  ```
+  alias SuperCollider, as :SC
+
+  # Start the `SuperCollider.SoundServer` GenServer
+  SC.start() # this will return the PID of the SoundServer, however, you don't have to assign this to a variable as its stored as a persistient term used by the other functions in this module.
+
+  # Issue the verion command and get the response from SoundServer's state
+  SC.command(:version) # send the version commant to SuperCollider
+  SC.response(:version) # retrieves the version response from the SoundServer's state
+
+  # Play a sine wave UGen on node 600, with a frequency of 300
+  SC.command(:s_new, ["sine", 600, 1, 1, ["freq", 300]])
+
+  # Stop the sine wave by freeing node 600
+  SC.command(:n_free, 600)
+  ```
   """
 
   alias SuperCollider.SoundServer
-
 
   @doc """
   Starts the `SuperCollider.SoundServer` GenServer and returns it's pid.
@@ -18,7 +42,6 @@ defmodule SuperCollider do
     :persistent_term.put(:supercollider_soundserver, pid)
     pid
   end
-
 
   @doc """
   Get's the state of the global SoundServer. It also accepts as it's first parameter, an optional pid for any active SoundServer processed.
@@ -89,6 +112,12 @@ defmodule SuperCollider do
     end
   end
 
+
+  @doc """
+  Returns the PID of the SoundServer stored as a persistent_term as :supercollider_soundserver.
+  """
+  def pid, do: :persistent_term.get(:supercollider_soundserver, nil)
+
   defp get_pid(pid) do
     global_sound_server = :persistent_term.get(:supercollider_soundserver, nil)
     cond do
@@ -122,7 +151,7 @@ defmodule SuperCollider do
   def command(command_name, args) do
     case :persistent_term.get(:supercollider_soundserver, nil) do
       nil -> {:error, "Global SuperCollider.SoundServer pid not stored as a persistient term under :supercollider_soundserver"}
-      pid -> SoundServer.command(pid, args, command_name)
+      pid -> SoundServer.command(pid, command_name, args)
     end
   end
 

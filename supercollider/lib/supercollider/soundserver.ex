@@ -7,8 +7,48 @@ defmodule SuperCollider.SoundServer do
 
   @moduledoc """
   This module is a:
-  - GenServer which is used to communicate with SuperCollider's scserver
+  - GenServer which is used to communicate with SuperCollider's scserver or supernova
   - Struct which holds the server's basic state and configuration.
+
+  ## Basic configuration
+  Buy default, it looks for scynth at 127.0.0.1 or localhost on port 57110.
+
+  ## Starting a server
+  ```
+  alias SuperCollider.SoundServer
+  {:ok, pid} = GenServer.start_link(SoundServer, SoundServer.new(opts))
+  ``
+
+  ## Requesting the server's status
+  ```
+  SoundServer.command(pid, :status)
+
+  # If scynth returned an OSC status response message, you can access it by fetching the SoundServer's state, accessing the responses map and status key:
+
+  SoundServer.state(pid).responses[:status]
+
+  # Returns:
+  # [
+  #   {"unused", 1},
+  #   {"number of unit generators", 0},
+  #   {"number of synths", 0},
+  #   {"number of groups", 2},
+  #   {"number of loaded synth definitions", 109},
+  #   {"average percent CPU usage for signal processing", 0.026054037734866142},
+  #   {"peak percent CPU usage for signal processing", 0.07464269548654556},
+  #   {"nominal sample rate", 44100.0},
+  #   {"actual sample rate", 44099.97125381111}
+  # ]
+  ```
+
+  ## Play a sine wave UGen
+  ```
+  # Play a sine wave UGen on node 600, with a frequency of 300
+  SoundServer.command(pid, :s_new, ["sine", 600, 1, 1, ["freq", 300]])
+
+  # Stop the sine wave by freeing node 600
+  SoundServer.command(pid, :n_free, 600)
+  ```
   """
 
   alias SuperCollider.SoundServer
@@ -32,6 +72,13 @@ defmodule SuperCollider.SoundServer do
 
   # Genserver callbacks
 
+  @doc """
+  The init callback accepts `%SoundServer{}` struct holding the initial configuration and state. If none is provided, defaults are used.
+
+  Calls the `run/1` function which will check if SuperCollider is loaded and start OSC communication.
+
+  See the `run/1` function for more details
+  """
   @impl true
   def init(soundserver \\ %__MODULE__{}) do
     IO.inspect(soundserver, label: "INIT")
@@ -40,59 +87,92 @@ defmodule SuperCollider.SoundServer do
   end
 
   @doc """
-  Starts
+  Starts the `SuperCollider.SoundServer` GenServer.
+
+  You can override the default configuration by passing a keyword list with the new values. Currently the following can be set:
+    - ip: the IP address of scserver. This defaults to '127.0.0.1'
+    - hostname: the hostname of the server. This defaults to 'localhost'.
+    - port: the port used to communicate with scserver. This defaults to 57110.
+    - socket: the UDP socket used to communicate with scserver, once the connection is open.
+
+  ## Example
+  ```
+  # Start SoundServer with default configuration
+  {:ok, pid} = SuperCollider.SoundServer.start_link()
+
+  # Start SoundServer specifying scynth's port to 57000
+  {:ok, pid} = SuperCollider.SoundServer.start_link(port: 57000)
+  ```
   """
   def start_link(opts \\ []) do
     GenServer.start_link(SoundServer, SoundServer.new(opts))
   end
-
-  # Genserver handlers
-  # @impl true
-  # def handle_call(:test, from, state) do
-  #   IO.inspect from, label: "FROM"
-
-  #   state = %{state | from: from}
-
-  #   new_state = apply(Command, :version, [state])
-  #   IO.inspect new_state, label: "Command issued"
-
-  #   {:reply, "Hello", new_state}
-  # end
 
   @impl true
   def handle_call(:state, _from, state) do
     {:reply, state, state}
   end
 
+  @doc """
+  Returns the current state of the server.
+
+  For example, calling `SuperCollider.SoundServer.state(pid)` will return the populated state struct, which includes configuration and any scynth OSC message responses stored in the reponses key:
+
+  ```
+  %SuperCollider.SoundServer{
+    ip: '127.0.0.1',
+    hostname: 'localhost',
+    port: 57110,
+    socket: #Port<0.7>,
+    responses: %{
+      fail: ["/n_free", "Node 100 not found"],
+      status: [
+        {"unused", 1},
+        {"number of unit generators", 0},
+        {"number of synths", 0},
+        {"number of groups", 2},
+        {"number of loaded synth definitions", 109},
+        {"average percent CPU usage for signal processing", 0.026054037734866142},
+        {"peak percent CPU usage for signal processing", 0.07464269548654556},
+        {"nominal sample rate", 44100.0},
+        {"actual sample rate", 44099.97125381111}
+      ],
+      version: [
+        {"Program name. May be \"scsynth\" or \"supernova\".", "scsynth"},
+        {"Major version number. Equivalent to sclang's Main.scVersionMajor.", 3},
+        {"Minor version number. Equivalent to sclang's Main.scVersionMinor.", 13},
+        {"Patch version name. Equivalent to the sclang code \".\" ++ Main.scVersionPatch ++ Main.scVersionTweak.",
+        ".0"},
+        {"Git branch name.", "Version-3.13.0"},
+        {"First seven hex digits of the commit hash.", "3188503"}
+      ]
+    }
+  }
+  ```
+  """
   def state(pid) do
     GenServer.call(pid, :state)
   end
 
 
-
   @impl true
   def handle_cast({:command, command_name, args}, state) do
-    # new_state =
-    #   if is_valid_command?(command_name),
-    #     do: apply(Command, command_name, [state] ++ args),
-    #     else: state # don't update state, invalid command
     new_state = apply(Command, command_name, [state] ++ args)
     {:noreply, new_state}
   end
 
-  # def command(pid, command_name, args) when not is_list(args) do
-  #   GenServer.cast(pid, {:command, command_name, [args]})
-  # end
 
+  @doc """
+  Sends an OSC command to SuperCollider (scynth or supernova).
+
+  `SuperCollider.SoundServer.command(pid, :version)` will sendthe OSC 'version' command.
+
+  Optionally accepts arguments, depending on the command being called.
+
+  Commands must be a valid commmand (function in the SuperCollider.SoundServer.Command module) and match it's arity, otherwise an {:error, reason} tuple ie returned.
+  """
   def command(pid, command_name) do
-    # if is_valid_command?(command_name) do
-    #   GenServer.cast(pid, {:command, command_name, []})
-    # else
-    #   {:error, "Invalid SuperCollider command."}
-    # end
-
-    IO.inspect :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 1), label: "0 params"
-    if :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 1) do
+     if is_valid_command?(command_name) do
       GenServer.cast(pid, {:command, command_name, []})
     else
       {:error, "Invalid SuperCollider command or arity."}
@@ -100,15 +180,7 @@ defmodule SuperCollider.SoundServer do
   end
 
   def command(pid, command_name, args) when is_list(args) do
-    # if is_valid_command?(command_name) do
-    #   GenServer.cast(pid, {:command, command_name, args})
-    # else
-    #   {:error, "Invalid SuperCollider command."}
-    # end
-
-    IO.inspect :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 2), label: "list of #{length(args)}, 1 params"
-
-    if :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, length(args)) do
+    if is_valid_command?(command_name, args) do
       GenServer.cast(pid, {:command, command_name, args})
     else
       {:error, "Invalid SuperCollider command or arity."}
@@ -117,19 +189,18 @@ defmodule SuperCollider.SoundServer do
   end
 
   def command(pid, command_name, args) do
-    # if is_valid_command?(command_name) do
-    #   GenServer.cast(pid, {:command, command_name, [args]})
-    # else
-    #   {:error, "Invalid SuperCollider command."}
-    # end
-    IO.inspect :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 2), label: "1 params"
-
-    if :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 2)  do
+    if is_valid_command?(command_name, args)  do
       GenServer.cast(pid, {:command, command_name, [args]})
     else
       {:error, "Invalid SuperCollider command or arity."}
     end
   end
+
+  # is_valid_command? checks to see if the command is a function in the SuperCollider.SoundServer.Command module
+  # and if it has the appropriate arity when args are provided
+  defp is_valid_command?(command_name), do: :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 1)
+  defp is_valid_command?(command_name, args) when is_list(args), do: :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, length(args)+1)
+  defp is_valid_command?(command_name, _args), do: :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 2)
 
   @impl true
   def handle_cast(:run, state) do
