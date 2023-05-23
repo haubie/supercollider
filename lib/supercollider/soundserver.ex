@@ -19,7 +19,7 @@ defmodule SuperCollider.SoundServer do
   ```
   alias SuperCollider.SoundServer
   {:ok, pid} = GenServer.start_link(SoundServer, SoundServer.new(opts))
-  ``
+  ```
 
   ## Requesting the server's status
   ```
