@@ -24,7 +24,7 @@ This library is currently under active development and it’s API is likely to c
 
 ## Architecture
 This library consists of a number of modules, the main ones being:
--	`SuperCollider` which allows you to quickly get going without needing to understand too much of this library’s architecture
+-	`SuperCollider` which allows you to quickly get going without needing to understand too much of this library’s architecture.
 -	`SuperCollider.SoundServer` a GenServer which is used to create the main process for sending and listening to scsynth or supernova messages. Messages are sent using OSC packets.
 -	`SuperCollider.SynthDef` which is an Elixir struct representation of SuperCollider’s synth definitions, built from networks of UGens (unit generators) which generate or process both audio and control signals.
 
