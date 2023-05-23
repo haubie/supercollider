@@ -1,6 +1,6 @@
 {application,supercollider,
              [{applications,[kernel,stdlib,elixir,logger,osc]},
-              {description,"supercollider"},
+              {description,"An Elixir library for interacting with SuperCollider, an audio synthesis and composition platform."},
               {modules,['Elixir.SuperCollider',
                         'Elixir.SuperCollider.SoundServer',
                         'Elixir.SuperCollider.SoundServer.Command',
