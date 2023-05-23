@@ -112,7 +112,7 @@ defmodule SuperCollider.SynthDef.ScFile do
 # file = "/Users/haubie/Development/supercollider/hoover.scsyndef"
 # file = "/Users/haubie/Development/supercollider/closedhat.scsyndef"
 
-  def parse(filename \\ "/Users/haubie/Development/supercollider/closedhat.scsyndef") do
+  def parse(filename) do
     # Parse file header
     File.read!(filename) |> decode()
   end

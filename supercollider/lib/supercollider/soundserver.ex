@@ -1,9 +1,11 @@
 defmodule SuperCollider.SoundServer do
   use GenServer
+  require Logger
 
-  @scsynth_binary_location "/Applications/SuperCollider.app/Contents/Resources/scsynth"
-  @supernova_binary_location "/Applications/SuperCollider.app/Contents/Resources/supernova"
-  # @commands SuperCollider.SoundServer.Command.__info__(:functions) |> Enum.map(fn {f_name, _arity} -> f_name end) |> Enum.uniq()
+  @server_type [
+    scsynth: "/Applications/SuperCollider.app/Contents/Resources/scsynth",
+    supernova: "/Applications/SuperCollider.app/Contents/Resources/supernova"
+  ]
 
   @moduledoc """
   This module is a:
@@ -63,11 +65,13 @@ defmodule SuperCollider.SoundServer do
   - hostname: the hostname of the server. This defaults to 'localhost'.
   - port: the port used to communicate with scserver. This defaults to 57110.
   - socket: the UDP socket used to communicate with scserver, once the connection is open.
+  - type: which SuperCollider server is being used, accepts :scsynth (default) or :supernova (multicore)
   """
   defstruct ip: '127.0.0.1',
             hostname: 'localhost',
             port: 57110,
             socket: nil,
+            type: :scsynth,
             responses: %{}
 
   # Genserver callbacks
@@ -161,7 +165,6 @@ defmodule SuperCollider.SoundServer do
     {:noreply, new_state}
   end
 
-
   @doc """
   Sends an OSC command to SuperCollider (scynth or supernova).
 
@@ -202,41 +205,6 @@ defmodule SuperCollider.SoundServer do
   defp is_valid_command?(command_name, args) when is_list(args), do: :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, length(args)+1)
   defp is_valid_command?(command_name, _args), do: :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 2)
 
-  @impl true
-  def handle_cast(:run, state) do
-    new_state = run(state)
-    {:noreply, new_state}
-  end
-
-  @impl true
-  def handle_cast(:quit, state) do
-    new_state = Command.quit(state)
-    {:noreply, new_state}
-  end
-
-  @impl true
-  def handle_cast(:tone, state) do
-    new_state = Command.tone(state)
-    {:noreply, new_state}
-  end
-
-  @impl true
-  def handle_cast({:synth, attr}, state) do
-    new_state = Command.synth(state, attr)
-    {:noreply, new_state}
-  end
-
-  @impl true
-  def handle_cast(:free_node, state) do
-    new_state = Command.free_node(state, 100)
-    {:noreply, new_state}
-  end
-
-  @impl true
-  def handle_cast(:status, state) do
-    new_state = Command.status(state)
-    {:noreply, new_state}
-  end
 
   @doc """
   When sending calls to scserver though UDP, a response message may be returned in the following format:
@@ -245,6 +213,8 @@ defmodule SuperCollider.SoundServer do
 
   The `handle_info/2` callback will forward these messages to `Response.process_osc_message/2` for handling.
   The handler code must return the updated SoundServer struct for a valid state to be maintained.
+
+  To get the messages, use `SuperCollider.response()`.
   """
   @impl true
   def handle_info(msg, state) do
@@ -292,10 +262,10 @@ defmodule SuperCollider.SoundServer do
   - checks if server is loaded, otherwise attempts to boot it
   - opens a USP socket for Open Sound Communication (OSC) communication with the server.
   """
-  def run(sserver \\ %__MODULE__{}) do
+  def run(soundserver \\ %__MODULE__{}) do
     with {:ok, socket} <- open(),
-         :ok <- maybe_boot_scsynth(%{sserver | socket: socket}) do
-      %__MODULE__{sserver | socket: socket}
+         :ok <- maybe_boot_scsynth(%{soundserver | socket: socket}) do
+      %__MODULE__{soundserver | socket: socket}
     else
       _any -> {:error, "Could not be initialised"}
     end
@@ -308,13 +278,15 @@ defmodule SuperCollider.SoundServer do
 
   """
   def maybe_boot_scsynth(soundserver) do
-    IO.puts("scsynth - maybe boot, waiting up to 5 seconds to see if loaded")
+    Logger.info("#{soundserver.type} - waiting up to 5 seconds to see if already loaded ⏳")
+
+    cmd = @server_type[soundserver.type]
 
     if !scsynth_booted?(soundserver) do
-      IO.inspect("scynth - attempting boot up")
+      Logger.info("#{soundserver.type} - attempting to start 🏁")
 
       boot_cmd = fn ->
-        System.cmd(@scsynth_binary_location, ["-u", Integer.to_string(soundserver.port)])
+        System.cmd(cmd, ["-u", Integer.to_string(soundserver.port)])
       end
 
       Task.async(boot_cmd)
@@ -326,7 +298,7 @@ defmodule SuperCollider.SoundServer do
   end
 
   @doc """
-  Checks if scsynth is booted.
+  Checks if scsynth or supernova is booted.
 
   It does this by sending the OSC command '/status' through the previously opened UDP port to the address that scsynth is expected.
 
@@ -344,15 +316,15 @@ defmodule SuperCollider.SoundServer do
       {:udp, _process_port, _ip_addr, _port_num, data} ->
         packet = data |> OSC.decode!()
         %{address: "/status.reply", arguments: _arguments} = packet.contents |> List.first()
-        IO.puts("scsynth - already booted")
+        Logger.info("#{soundserver.type} - already booted ✅")
         true
 
       msg ->
-        IO.inspect(msg, label: "scsynth - Non matching UDP message - probably not booted?")
+        Logger.info("#{soundserver.type} - non-matching UDP message, #{soundserver.type} is probably not booted. \nOSC message recieved: (#{inspect(msg)})")
         false
     after
       5_000 ->
-        IO.puts("scsynth - nothing booted after 5 seconds. Try booting scsynth manually.")
+        Logger.info("#{soundserver.type} - no response, #{soundserver.type} likely not booted.")
         false
     end
   end

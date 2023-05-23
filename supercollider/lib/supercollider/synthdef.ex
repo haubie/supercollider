@@ -140,7 +140,6 @@ defmodule SuperCollider.SynthDef do
       Encoder.write_name_float_pairs(synthdef.varient_specs_list)
   end
 
-
   defp parse_synthdef_name({synth_def_struct, bin_data}) do
     {synth_name, rest_synthdef} = Parser.parse_pstring(bin_data)
 

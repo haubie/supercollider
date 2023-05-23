@@ -36,6 +36,25 @@ defmodule SuperCollider do
   The pid for the `SuperCollider.SoundServer` is also stored as a persisitient term under `:supercollider_soundserver`. This is used by the `SuperCollider.state/0`, `SuperCollider.response/0`, `SuperCollider.response/1`, `SuperCollider.command/1` and `SuperCollider.command/2` functions so that they're passed the global SoundServer pid without having to specify it.
 
   If you want to directly interact with a SoundServer through it's pid, see the equivalent functions under `SuperCollider.SoundServer`.
+
+  ## Options
+  Additionally, this function can take options:
+  - ip: the IP address of scserver. This defaults to '127.0.0.1'
+  - hostname: the hostname of the server. This defaults to 'localhost'.
+  - port: the port used to communicate with scserver. This defaults to 57110.
+  - socket: the UDP socket used to communicate with scserver, once the connection is open.
+  - type: the server type being used, accepts :scsynth (default) or :supernova (multicore)
+
+  ## Examples
+  Start SuperCollider with defaults
+  ```
+  SuperCollider.start()
+  ```
+
+  Start SuperCollider with a supernova server
+  ```
+  SuperCollider.start(type: :supernova)
+  ```
   """
   def start(opts \\ []) do
     {:ok, pid} = GenServer.start_link(SoundServer, SoundServer.new(opts))
@@ -44,12 +63,28 @@ defmodule SuperCollider do
   end
 
   @doc """
-  Get's the state of the global SoundServer. It also accepts as it's first parameter, an optional pid for any active SoundServer processed.
+  Get's the state of the global SoundServer (whos PID is stored as a persisitient term under `:supercollider_soundserver`).
+
+  ## Example
+  ```
+  SuperCollider.state()
+
+  ## Returns the populated SoundServer struct
+  # %SuperCollider.SoundServer{
+  #   ip: '127.0.0.1',
+  #   hostname: 'localhost',
+  #   port: 57110,
+  #   socket: #Port<0.12>,
+  #   type: :supernova,
+  #   responses: %{}
+  # }
+  ```
   """
-  def state(pid \\ nil) do
-    case get_pid(pid) do
-      {:ok, pid} -> SoundServer.state(pid)
-      {:error, msg} -> {:error, msg}
+  def state() do
+    case :persistent_term.get(:supercollider_soundserver, nil) do
+      nil -> {:error, "Global SuperCollider.SoundServer pid not stored as a persistient term under :supercollider_soundserver"}
+      pid ->
+        SoundServer.state(pid)
     end
   end
 
@@ -118,15 +153,6 @@ defmodule SuperCollider do
   """
   def pid, do: :persistent_term.get(:supercollider_soundserver, nil)
 
-  defp get_pid(pid) do
-    global_sound_server = :persistent_term.get(:supercollider_soundserver, nil)
-    cond do
-      pid != nil -> {:ok, pid}
-      global_sound_server != nil -> {:ok, global_sound_server}
-      true -> {:error, "SuperCollider.SoundServer pid not given or a global pid not stored as a persistient term under :supercollider_soundserver"}
-    end
-  end
-
   @doc """
   Send a command to the default SoundServer.
 
@@ -154,7 +180,5 @@ defmodule SuperCollider do
       pid -> SoundServer.command(pid, command_name, args)
     end
   end
-
-
 
 end

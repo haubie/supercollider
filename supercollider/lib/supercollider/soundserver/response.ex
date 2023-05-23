@@ -45,8 +45,6 @@ defmodule SuperCollider.SoundServer.Response do
   For convenience, you can quickly access these reponse messages by calling `SuperCollider.response()` or `SuperCollider.response(key)` where key is `:version`, `:status` or `:fail`.
   """
 
-  alias SuperCollider.SoundServer
-
   require Logger
 
   @doc """
@@ -71,7 +69,7 @@ defmodule SuperCollider.SoundServer.Response do
   def process_osc_message(soundserver, res) do
     packet = res |> OSC.decode!()
 
-    IO.inspect packet, label: "OSC packet recieved"
+    # IO.inspect packet, label: "OSC packet recieved"
 
     case packet.contents |> List.first() do
       %{address: "/version.reply", arguments: arguments} ->
@@ -102,7 +100,6 @@ defmodule SuperCollider.SoundServer.Response do
     end
 
   end
-
 
   # Helper functions for formatting responses and adding response data to the state (if applicable)
   defp put_response(soundserver, key, value) do
