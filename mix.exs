@@ -11,10 +11,14 @@ defmodule SuperCollider.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: package(),
-      source_url: "https://github.com/haubie/supercollider",
       docs: [
-        main: "SuperCollider",
-        extras: ["README.md"]
+        main: "readme",
+        source_url: "https://github.com/haubie/supercollider",
+        homepage_url: "https://github.com/haubie/supercollider",
+        extras: [
+          "README.md",
+          {:"LICENSE", [title: "License (MIT)"]},
+        ]
       ]
     ]
   end

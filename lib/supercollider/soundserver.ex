@@ -3,9 +3,20 @@ defmodule SuperCollider.SoundServer do
   require Logger
 
   @server_type [
-    scsynth: "/Applications/SuperCollider.app/Contents/Resources/scsynth",
-    supernova: "/Applications/SuperCollider.app/Contents/Resources/supernova"
+    mac: [
+      scsynth: "/Applications/SuperCollider.app/Contents/Resources/scsynth",
+      supernova: "/Applications/SuperCollider.app/Contents/Resources/supernova"
+    ],
+    unix: [
+      scsynth: "/usr/local/scsynth",
+      supernova: "/usr/local/supernova"
+    ],
+    windows: [
+      scsynth: "\\Program Files\\SuperCollider\\sclang.exe",
+      supernova: "\\Program Files\\SuperCollider\\supernova.exe"
+    ]
   ]
+
 
   @moduledoc """
   This module is a:
@@ -274,13 +285,18 @@ defmodule SuperCollider.SoundServer do
   @doc """
   Checks if scsynth is loaded by calling `scsynth_booted?/1`. If not it will attempt to boot it asynchronously using `Task.async/1`.
 
-  TODO: The location of the scysnth binary is currently set in the `@scsynth_binary_location` but this will need to be moved out into a config or using different search strategies for different OSes.
+  Currently attempts to start scynth or supernova at the following locations:
 
+  - Mac: /Applications/SuperCollider.app/Contents/Resources/
+  - Linux: /usr/local/
+  - Windows: \\Program Files\\SuperCollider\\
+
+  TODO: The location of the scysnth binary is currently set to the fixed locations above, but this will need to be moved out into a config or using different search strategies for different OSes.
   """
   def maybe_boot_scsynth(soundserver) do
     Logger.info("#{soundserver.type} - waiting up to 5 seconds to see if already loaded ⏳")
 
-    cmd = @server_type[soundserver.type]
+    cmd = @server_type[os_type()][soundserver.type]
 
     if !scsynth_booted?(soundserver) do
       Logger.info("#{soundserver.type} - attempting to start 🏁")
@@ -328,4 +344,14 @@ defmodule SuperCollider.SoundServer do
         false
     end
   end
+
+  # Returns of the OS type as :windows, :mac or :unix
+  defp os_type do
+    case :os.type() do
+      {:win32, _} -> :windows
+      {:unix, :darwin} -> :mac
+      {:unix, _} -> :unix
+    end
+  end
+
 end
