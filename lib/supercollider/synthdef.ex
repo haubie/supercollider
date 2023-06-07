@@ -101,7 +101,7 @@ defmodule SuperCollider.SynthDef do
   ```
   Assuming SuperCollider (scsynth or supernova) is running and `SuperCollider.SoundServer` has been started, e.g. through `SuperCollider.start()`, you can send this binary SynthDef to the server and play it!
 
-  Send the bimary to SuperCollider server (scsynth or supernova):
+  Send the binary to SuperCollider server (scsynth or supernova):
   ```
   SuperCollider.command(:d_recv, sc_binary)
   ```
