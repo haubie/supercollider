@@ -1,4 +1,32 @@
 defmodule SuperCollider.SynthDef.ScFile do
+  @moduledoc """
+  A struct representing a .scsyndef file in Elixir and a module for parsing (decoding) and encoding (to binary) SuperCollider synthdef files.
+
+  Currently only version 2 files are supported.
+
+  As a struct, `%ScFile{}` contains the following:
+  - `type_id`: a string (`SCgf`) representing the SuperCollider file format
+  - `file_version`: currently set to 2 (version 2 is the only file format currently supported)
+  - `synth_defs_count`: an integer count of the number of synthdefs within the file.`nil` if empty
+  - `synth_defs`: a list of synth definitions. These will use the `%SynthDef{}` struct.
+
+  Key functions in this module include:
+  - `parse/1`: for parsing a .scsyndef file. This will read the file from disc and call the `decode/1` function.
+  - `encode/1`: for encoding one or more `%SynthDef{}` into the scsyndef binary format.
+
+
+  ## Example
+  ```
+  alias SuperCollider.SynthDef.ScFile
+
+  # Parse the scsyndef file
+  sc_file = ScFile.parse("/supercollider/ambient.scsyndef")
+
+  # returns the parsed file as a `%ScFile{}` struct
+  ```
+
+  See below for further examples.
+  """
 
   alias SuperCollider.SynthDef
   alias SuperCollider.SynthDef.ScFile
@@ -17,7 +45,7 @@ defmodule SuperCollider.SynthDef.ScFile do
 
   ## Example
   ```
-  alias uperCollider.SynthDef.ScFile
+  alias SuperCollider.SynthDef.ScFile
 
   # Parse the scsyndef file
   sc_file = ScFile.parse("/supercollider/ambient.scsyndef")
@@ -107,7 +135,7 @@ defmodule SuperCollider.SynthDef.ScFile do
   ```
   """
 
-#   file = "/Users/haubie/Development/supercollider/ambient.scsyndef"
+# file = "/Users/haubie/Development/supercollider/ambient.scsyndef"
 # file = "/Users/haubie/Development/supercollider/pink-ambient.scsyndef"
 # file = "/Users/haubie/Development/supercollider/hoover.scsyndef"
 # file = "/Users/haubie/Development/supercollider/closedhat.scsyndef"
@@ -117,6 +145,22 @@ defmodule SuperCollider.SynthDef.ScFile do
     File.read!(filename) |> decode()
   end
 
+  @doc """
+  Decodes a scsyndef binary into an `%ScFile{}` struct.
+
+  ## Example
+  Read a .scsyndef file from disc and decode it:
+  ```
+  alias SuperCollider.SynthDef.ScFile
+
+  filename = "/supercollider/closedhat.scsyndef"
+  sc_file =
+    File.read!(filename)
+    |> ScFile.decode()
+  ```
+
+  Note: If decoding directly from a file, you can use the `ScFile.parse(filename)` instead.
+  """
   def decode(binary) do
     # Parse file header
     case binary |> parse_header() do
@@ -132,7 +176,11 @@ defmodule SuperCollider.SynthDef.ScFile do
     end
   end
 
-
+  @doc """
+  Takes either a
+  - single `%SynthDef{}` and encodes it into a new scsyndef binary
+  - list of `%SynthDef{}` and encodes them into a new scsyndef binary.
+  """
   def encode(synthdefs) when is_list(synthdefs) do
     num_synth_defs = length(synthdefs)
     encode_header(num_synth_defs) <> SynthDef.encode(synthdefs)

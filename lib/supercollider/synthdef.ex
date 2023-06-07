@@ -3,12 +3,16 @@ defmodule SuperCollider.SynthDef do
   @moduledoc """
   The SynthDef is module and struct for SuperCollider Synthesis Definitions.
 
+  This module includes functions for:
+  * converting binary scsyndef to a `%SynthDef{}` struct with parser/1 or from_file/1
+  * encoding `%SynthDef{}` to binary scsyndef file format.
+
   The SynthDef struct contains the:
 
   * the name of the synth definition
   * number of constants
   * list of constant values
-  *  number of parameters
+  * number of parameters
   * [float32] * P - initial parameter values
   * number of parameter names
   * list of named parameters and their index
@@ -17,9 +21,98 @@ defmodule SuperCollider.SynthDef do
   * number of variants
   * list of named varient specs (named key-value pairs with the value as a float.)
 
-  The module includes:
-  *
-  * parser code for synthgens.
+  **TODO: Currently there isn't a 'friendly' DSL for creating SynthDefs but that is on the roadmap!**
+
+  ## Example - create a SynthDef from scratch
+  This example:
+  - creates a brown-noise SynthDef
+  - encodes it to binary format
+  - sends it to SuperCollider (scsynth or supernova)
+  - play it by sending the `:s_new` command
+  - stop it by sending the `:n_free` command
+
+  ```
+  # Define the brown noise SynthDef and call it 'ambient'
+  brown_noise_synthdef =
+    [
+      %SuperCollider.SynthDef{
+        name: "ambient",
+        constant_count: 1,
+        constant_values_list: [0.2],
+        parameter_count: 1,
+        parameter_values_list: [0.0],
+        parameter_names_count: 1,
+        parameter_names_list: [
+          %{_enum_index: 0, parameter_index: 0, parameter_name: "out"}
+        ],
+        ugen_count: 4,
+        ugen_specs_list: [
+          %SuperCollider.SynthDef.UGen{
+            class_name: "Control",
+            calculation_rate: 1,
+            special_index: 0,
+            inputs_count: 0,
+            input_specs_list: [],
+            outputs_count: 1,
+            output_specs_list: [%{_enum_count: 0, calculation_rate: 1}]
+          },
+          %SuperCollider.SynthDef.UGen{
+            class_name: "BrownNoise",
+            calculation_rate: 2,
+            special_index: 0,
+            inputs_count: 0,
+            input_specs_list: [],
+            outputs_count: 1,
+            output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
+          },
+          %SuperCollider.SynthDef.UGen{
+            class_name: "BinaryOpUGen",
+            calculation_rate: 2,
+            special_index: 2,
+            inputs_count: 2,
+            input_specs_list: [
+              %{_enum_count: 0, index: 1, output_index: 0, type: :ugen},
+              %{_enum_count: 1, index: 0, type: :constant}
+            ],
+            outputs_count: 1,
+            output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
+          },
+          %SuperCollider.SynthDef.UGen{
+            class_name: "Out",
+            calculation_rate: 2,
+            special_index: 0,
+            inputs_count: 2,
+            input_specs_list: [
+              %{_enum_count: 0, index: 0, output_index: 0, type: :ugen},
+              %{_enum_count: 1, index: 2, output_index: 0, type: :ugen}
+            ],
+            outputs_count: 0,
+            output_specs_list: []
+          }
+        ],
+        varient_count: 0,
+        varient_specs_list: []
+      }
+    ]
+  ```
+  Encode the SynthDef into binary format:
+  ```
+  sc_binary = SynthDef.to_binary(brown_noise_synthdef)
+  ```
+  Assuming SuperCollider (scsynth or supernova) is running and `SuperCollider.SoundServer` has been started, e.g. through `SuperCollider.start()`, you can send this binary SynthDef to the server and play it!
+
+  Send the bimary to SuperCollider server (scsynth or supernova):
+  ```
+  SuperCollider.command(:d_recv, sc_binary)
+  ```
+  You can then play the brown noise by issuing the following command. This will load it on node 100:
+  ```
+  SuperCollider.command(:s_new, ["ambient", 100, 1, 0, []])
+  ```
+  You can stop it by freeing node 100:
+  ```
+  SuperCollider.command(:n_free, 100)
+  ```
   """
 
   alias SuperCollider.SynthDef
@@ -52,7 +145,9 @@ defmodule SuperCollider.SynthDef do
   @doc """
   Defines a new SynthDef.
 
-  A SynthDef conisits of the following
+  Takes a name (string) as the first parameter.
+
+  A SynthDef conisits of the following:
   * name (of synthdef)
   * constants
   * parameters
@@ -60,14 +155,6 @@ defmodule SuperCollider.SynthDef do
   * UGen specs
   * varient specs
 
-  ## Example
-  ```
-  synthdef = SynthDef.new("example", fn (params) ->
-       freq = params.named("name", 440.0); # index 0
-       vol = params.named("vol", 1.0); # index 1
-       ugen::Out::ar().channels(ugen::SinOsc::ar().freq(freq).mul(vol))
-      end);
-  ```
   """
   def new(name) do
     %SynthDef{name: name}

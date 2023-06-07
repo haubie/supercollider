@@ -45,6 +45,8 @@ defmodule SuperCollider do
   - socket: the UDP socket used to communicate with scserver, once the connection is open.
   - type: the server type being used, accepts :scsynth (default) or :supernova (multicore)
 
+  Note if the hostname is set to `nil` it will try the IP address at `ip`.
+
   ## Examples
   Start SuperCollider with defaults
   ```
@@ -55,6 +57,12 @@ defmodule SuperCollider do
   ```
   SuperCollider.start(type: :supernova)
   ```
+
+  This function starts the `SuperCollider.SoundServer` GenServer which will check if SuperCollider has booted on your system. If not, it will currently attempt to start scynth or supernova at the following locations:
+
+  - Mac: /Applications/SuperCollider.app/Contents/Resources/
+  - Linux: /usr/local/
+  - Windows: \\Program Files\\SuperCollider\\
   """
   def start(opts \\ []) do
     {:ok, pid} = GenServer.start_link(SoundServer, SoundServer.new(opts))

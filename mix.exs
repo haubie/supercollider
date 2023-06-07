@@ -6,7 +6,7 @@ defmodule SuperCollider.MixProject do
       app: :supercollider,
       name: "SuperCollider",
       description: "An Elixir library for interacting with SuperCollider, an audio synthesis and composition platform.",
-      version: "0.1.0",
+      version: "0.1.1",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
