@@ -26,6 +26,17 @@ defmodule SuperCollider.SynthDef.UGen do
     outputs_count output_specs_list
   ]a
 
+  # defstruct ~w[
+  #   class_name
+
+  #   calculation_rate
+  #   special_index
+
+  #   input_specs_list
+
+  #   output_specs_list
+  # ]a
+
   @doc"""
   The parse function is used as part deconstructing UGen binary data in SuperCollider scsyndef v2 files.
 
@@ -39,6 +50,10 @@ defmodule SuperCollider.SynthDef.UGen do
       %SynthDef{synth_def_struct | ugen_count: num_ugens, ugen_specs_list: ugen_specs_list},
       rem_binary
     }
+    # {
+    #   %SynthDef{synth_def_struct | ugen_specs_list: ugen_specs_list},
+    #   rem_binary
+    # }
   end
 
 
@@ -82,6 +97,42 @@ defmodule SuperCollider.SynthDef.UGen do
 
       Encoder.write_32(ugen_count) <> specs
   end
+
+  # def encode(ugen_count, ugen_specs_list) do
+
+  #   specs =
+  #     ugen_specs_list
+  #     |> Enum.map(fn ugen ->
+
+  #       ugen_header =
+  #         <<
+  #           String.length(ugen.class_name)::big-integer-8,
+  #           ugen.class_name::binary,
+  #           ugen.calculation_rate::big-integer-8,
+  #           (length(ugen.input_specs_list))::big-integer-32,
+  #           (length(ugen.output_specs_list))::big-integer-32,
+  #           ugen.special_index::big-integer-16
+  #         >>
+
+  #       ugen_input_specs =
+  #         ugen.input_specs_list
+  #         |> Enum.map(fn spec -> encode_input_spec(spec) end)
+  #         |> Enum.join(<<>>)
+
+  #       ugen_output_specs =
+  #         ugen.output_specs_list
+  #         |> Enum.map(fn spec ->
+  #           <<spec.calculation_rate::big-integer-8>>
+  #         end)
+  #         |> Enum.join(<<>>)
+
+  #       ugen_header <> ugen_input_specs <> ugen_output_specs
+  #     end)
+  #     |> List.flatten()
+  #     |> Enum.join(<<>>)
+
+  #     Encoder.write_32(ugen_count) <> specs
+  # end
 
   defp encode_input_spec(%{type: :constant, index: index_of_ugen_OR_index_of_output_gen}) do
     <<
@@ -127,6 +178,16 @@ defmodule SuperCollider.SynthDef.UGen do
       }
     ]
 
+    # ugen = [
+    #   %UGen{
+    #     class_name: ugen_class_name,
+    #     calculation_rate: calculation_rate,
+    #     special_index: special_index,
+    #     input_specs_list: input_specs,
+    #     output_specs_list: output_specs
+    #   }
+    # ]
+
     parse_ugens(binary_output_specs, number, count + 1, ugen ++ acc)
   end
 
@@ -151,14 +212,14 @@ defmodule SuperCollider.SynthDef.UGen do
         -1 ->
           # CONSTANT IF -1
             %{
-              _enum_count: count,
+              # _enum_count: count,
               type: :constant,
               index: index_of_ugen_OR_index_of_output_gen,
             }
 
         _ -> # OTHERWISE ITS A UGEN
             %{
-              _enum_count: count,
+              # _enum_count: count,
               type: :ugen,
               index: ugen_index_or_constant_flag,
               output_index: index_of_ugen_OR_index_of_output_gen
@@ -178,7 +239,12 @@ defmodule SuperCollider.SynthDef.UGen do
 
   defp parse_output_spec(binary, number, count, acc) when count < number do
     <<output_calc_rate::big-integer-8, rest::binary>> = binary
-    output_spec = [%{_enum_count: count, calculation_rate: output_calc_rate}]
+    output_spec = [
+      %{
+        _enum_count: count,
+        calculation_rate: output_calc_rate
+      }
+    ]
     parse_output_spec(rest, number, count + 1, output_spec ++ acc)
   end
 

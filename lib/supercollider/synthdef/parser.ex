@@ -100,7 +100,8 @@ defmodule SuperCollider.SynthDef.Parser do
       rest_binary::binary
     >> = binary
 
-    param = %{_enum_index: count, parameter_name: param_name, parameter_index: param_index_value}
+    # param = %{_enum_index: count, parameter_name: param_name, parameter_index: param_index_value}
+    param = %{parameter_name: param_name, parameter_index: param_index_value}
 
     parse_name_integer_pairs(rest_binary, number, count + 1, [param] ++ acc)
   end

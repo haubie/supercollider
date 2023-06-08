@@ -135,15 +135,16 @@ defmodule SuperCollider.SynthDef.ScFile do
   ```
   """
 
-# file = "/Users/haubie/Development/supercollider/ambient.scsyndef"
-# file = "/Users/haubie/Development/supercollider/pink-ambient.scsyndef"
-# file = "/Users/haubie/Development/supercollider/hoover.scsyndef"
-# file = "/Users/haubie/Development/supercollider/closedhat.scsyndef"
+# file = "/Users/haubie/Development/supercollider_livebook/ambient.scsyndef"
+# file = "/Users/haubie/Development/supercollider_livebook/pink-ambient.scsyndef"
+# file = "/Users/haubie/Development/supercollider_livebook/hoover.scsyndef"
+# file = "/Users/haubie/Development/supercollider_livebook/closedhat.scsyndef"
 
   def parse(filename) do
     # Parse file header
     File.read!(filename) |> decode()
   end
+
 
   @doc """
   Decodes a scsyndef binary into an `%ScFile{}` struct.
@@ -177,10 +178,12 @@ defmodule SuperCollider.SynthDef.ScFile do
   end
 
   @doc """
-  Takes either a
-  - single `%SynthDef{}` and encodes it into a new scsyndef binary
-  - list of `%SynthDef{}` and encodes them into a new scsyndef binary.
+  Takes:
+  - an `%ScFile{}` and encodes it into a new scsyndef binary
+  - single `%SynthDef{}` and encodes it into a new scsyndef binary (converting it to a `%ScFile{}` first)
+  - list of `%SynthDef{}` and encodes them into a new scsyndef binary (converting it to a `%ScFile{}` first).
   """
+  def encode(synthdefs) when is_struct(synthdefs, SuperCollider.SynthDef.ScFile), do: encode(synthdefs.synth_defs)
   def encode(synthdefs) when is_list(synthdefs) do
     num_synth_defs = length(synthdefs)
     encode_header(num_synth_defs) <> SynthDef.encode(synthdefs)

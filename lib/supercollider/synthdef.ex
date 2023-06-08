@@ -4,8 +4,8 @@ defmodule SuperCollider.SynthDef do
   The SynthDef is module and struct for SuperCollider Synthesis Definitions.
 
   This module includes functions for:
-  * converting binary scsyndef to a `%SynthDef{}` struct with parser/1 or from_file/1
-  * encoding `%SynthDef{}` to binary scsyndef file format.
+  * converting a binary scsyndef to a `%SynthDef{}` struct with `parser/1` or `from_file/1`
+  * encoding `%SynthDef{}` to the binary scsyndef file format.
 
   The SynthDef struct contains the:
 
@@ -25,11 +25,11 @@ defmodule SuperCollider.SynthDef do
 
   ## Example - create a SynthDef from scratch
   This example:
-  - creates a brown-noise SynthDef
+  - creates a [brown-noise](https://www.nytimes.com/interactive/2022/09/23/well/mind/brown-noise.html) SynthDef
   - encodes it to binary format
   - sends it to SuperCollider (scsynth or supernova)
-  - play it by sending the `:s_new` command
-  - stop it by sending the `:n_free` command
+  - plays it by sending the `:s_new` command
+  - stops it by sending the `:n_free` command
 
   ```
   # Define the brown noise SynthDef and call it 'ambient'
@@ -141,13 +141,26 @@ defmodule SuperCollider.SynthDef do
     varient_count varient_specs_list
   ]a
 
+  # defstruct ~w[
+  #   name
+
+  #   constant_values_list
+
+  #   parameter_values_list
+  #   parameter_names_list
+
+  #   ugen_specs_list
+
+  #   varient_specs_list
+  # ]a
+
 
   @doc """
   Defines a new SynthDef.
 
   Takes a name (string) as the first parameter.
 
-  A SynthDef conisits of the following:
+  A SynthDef consists of the following:
   * name (of synthdef)
   * constants
   * parameters
@@ -215,6 +228,7 @@ defmodule SuperCollider.SynthDef do
   end
 
   def encode(synthdef) do
+      IO.inspect synthdef, label: "SynthDef to encode"
       Encoder.write_pstring(synthdef.name) <>
       Encoder.write_32(synthdef.constant_count) <>
       Encoder.write_floats(synthdef.constant_values_list) <>
@@ -226,6 +240,19 @@ defmodule SuperCollider.SynthDef do
       Encoder.write_16(synthdef.varient_count) <>
       Encoder.write_name_float_pairs(synthdef.varient_specs_list)
   end
+
+  # def encode(synthdef) do
+  #     Encoder.write_pstring(synthdef.name) <>
+  #     Encoder.write_32(length(synthdef.constant_values_list)) <>
+  #     Encoder.write_floats(synthdef.constant_values_list) <>
+  #     Encoder.write_32(length(synthdef.parameter_values_list)) <>
+  #     Encoder.write_floats(synthdef.parameter_values_list) <>
+  #     Encoder.write_32(length(synthdef.parameter_names_list)) <>
+  #     Encoder.write_name_integer_pairs(synthdef.parameter_names_list) <>
+  #     UGen.encode(length(synthdef.ugen_specs_list), synthdef.ugen_specs_list) <>
+  #     Encoder.write_16(length(synthdef.varient_specs_list)) <>
+  #     Encoder.write_name_float_pairs(synthdef.varient_specs_list)
+  # end
 
   defp parse_synthdef_name({synth_def_struct, bin_data}) do
     {synth_name, rest_synthdef} = Parser.parse_pstring(bin_data)
@@ -244,6 +271,11 @@ defmodule SuperCollider.SynthDef do
       %SynthDef{synth_def_struct | constant_count: num_constants, constant_values_list: constant_values_list},
       rem_binary
     }
+
+    # {
+    #   %SynthDef{synth_def_struct | constant_values_list: constant_values_list},
+    #   rem_binary
+    # }
   end
 
   defp parse_synthdef_parameters({synth_def_struct, bin_data}) do
@@ -254,6 +286,10 @@ defmodule SuperCollider.SynthDef do
       %SynthDef{synth_def_struct | parameter_count: num_params, parameter_values_list: param_values_list},
       rem_binary
     }
+    # {
+    #   %SynthDef{synth_def_struct | parameter_values_list: param_values_list},
+    #   rem_binary
+    # }
   end
 
   defp parse_synthdef_parameter_names({synth_def_struct, bin_data}) do
@@ -264,6 +300,10 @@ defmodule SuperCollider.SynthDef do
       %SynthDef{synth_def_struct | parameter_names_count: num_param_names, parameter_names_list: param_names_and_values_list},
       rem_binary
     }
+    # {
+    #   %SynthDef{synth_def_struct | parameter_names_list: param_names_and_values_list},
+    #   rem_binary
+    # }
   end
 
   defp parse_synthdef_varients({synth_def_struct, bin_data}) do
@@ -274,5 +314,9 @@ defmodule SuperCollider.SynthDef do
       %SynthDef{synth_def_struct | varient_count: num_varients, varient_specs_list: varient_names_and_values_list},
       rem_binary
     }
+    # {
+    #   %SynthDef{synth_def_struct | varient_specs_list: varient_names_and_values_list},
+    #   rem_binary
+    # }
   end
 end
