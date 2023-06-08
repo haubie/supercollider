@@ -1,4 +1,4 @@
-# ![Supercollider Elixir](supercollider-elixir-logo.png)
+# ![Supercollider Elixir](https://raw.githubusercontent.com/haubie/supercollider/main/supercollider-elixir-logo.png)
 
 [![Documentation](http://img.shields.io/badge/hex.pm-docs-green.svg?style=flat)](https://hexdocs.pm/supercollider)
 [![Package](https://img.shields.io/hexpm/v/supercollider.svg)](https://hex.pm/packages/supercollider)
