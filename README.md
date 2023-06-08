@@ -1,7 +1,7 @@
-<h1><img src="supercollider-elixir-logo.png" alt="Supercollider Elixir"></h1>
+# ![Supercollider Elixir](supercollider-elixir-logo.png)
 
 [![Documentation](http://img.shields.io/badge/hex.pm-docs-green.svg?style=flat)](https://hexdocs.pm/supercollider)
-[![Package](https://img.shields.io/hexpm/v/explorer.svg)](https://hex.pm/packages/supercollider)
+[![Package](https://img.shields.io/hexpm/v/supercollider.svg)](https://hex.pm/packages/supercollider)
 
 ## Overview
 This is an Elixir library for interacting with [SuperCollider](https://supercollider.github.io/), an audio synthesis and composition platform.
