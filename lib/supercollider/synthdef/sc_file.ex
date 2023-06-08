@@ -79,59 +79,48 @@ defmodule SuperCollider.SynthDef.ScFile do
   [
     %SuperCollider.SynthDef{
       name: "ambient",
-      constant_count: 1,
-      constant_values_list: [{0, 0.2}],
-      parameter_count: 1,
-      parameter_values_list: [{0, 0.0}],
-      parameter_names_count: 1,
-      parameter_names_list: [
-        %{_enum_index: 0, parameter_index: 0, parameter_name: "out"}
-      ],
-      ugen_count: 4,
+      constant_values_list: [0.2],
+      parameter_values_list: [0.0],
+      parameter_names_list: [%{parameter_index: 0, parameter_name: "out"}],
       ugen_specs_list: [
         %SuperCollider.SynthDef.UGen{
-          class_name: "Out",
-          calculation_rate: 2,
+          class_name: "Control",
+          calculation_rate: 1,
           special_index: 0,
-          inputs_count: 2,
-          input_specs_list: [
-            %{_enum_count: 1, index: 2, output_index: 0, type: :ugen},
-            %{_enum_count: 0, index: 0, output_index: 0, type: :ugen}
-          ],
-          outputs_count: 0,
-          output_specs_list: []
-        },
-        %SuperCollider.SynthDef.UGen{
-          class_name: "BinaryOpUGen",
-          calculation_rate: 2,
-          special_index: 2,
-          inputs_count: 2,
-          input_specs_list: [
-            %{_enum_count: 1, index: 0, type: :constant},
-            %{_enum_count: 0, index: 1, output_index: 0, type: :ugen}
-          ],
-          outputs_count: 1,
-          output_specs_list: [%{calculation_rate: 2, count: 0}]
+          input_specs_list: [],
+          output_specs_list: [%{_enum_count: 0, calculation_rate: 1}]
         },
         %SuperCollider.SynthDef.UGen{
           class_name: "BrownNoise",
           calculation_rate: 2,
           special_index: 0,
-          inputs_count: 0,
           input_specs_list: [],
-          outputs_count: 1,
-          output_specs_list: [%{calculation_rate: 2, count: 0}]
+          output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
         },
         %SuperCollider.SynthDef.UGen{
-          class_name: "Control",
-          calculation_rate: 1,
+          class_name: "BinaryOpUGen",
+          calculation_rate: 2,
+          special_index: 2,
+          input_specs_list: [
+            %{index: 1, output_index: 0, type: :ugen},
+            %{index: 0, type: :constant}
+          ],
+          output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
+        },
+        %SuperCollider.SynthDef.UGen{
+          class_name: "Out",
+          calculation_rate: 2,
           special_index: 0,
-          inputs_count: 0,
-          input_specs_list: [],
-          outputs_count: 1,
-          output_specs_list: [%{calculation_rate: 1, count: 0}]
+          input_specs_list: [
+            %{index: 0, output_index: 0, type: :ugen},
+            %{index: 2, output_index: 0, type: :ugen}
+          ],
+          output_specs_list: []
         }
-      ]
+      ],
+      varient_specs_list: []
+    }
+  ]
   ```
   """
 

@@ -6,7 +6,7 @@ defmodule SuperCollider.MixProject do
       app: :supercollider,
       name: "SuperCollider",
       description: "An Elixir library for interacting with SuperCollider, an audio synthesis and composition platform.",
-      version: "0.1.1",
+      version: "0.1.2",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -15,6 +15,7 @@ defmodule SuperCollider.MixProject do
         main: "readme",
         source_url: "https://github.com/haubie/supercollider",
         homepage_url: "https://github.com/haubie/supercollider",
+        logo: "logo-hexdoc.png",
         extras: [
           "README.md",
           {:"LICENSE", [title: "License (MIT)"]},

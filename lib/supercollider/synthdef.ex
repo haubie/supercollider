@@ -10,15 +10,10 @@ defmodule SuperCollider.SynthDef do
   The SynthDef struct contains the:
 
   * the name of the synth definition
-  * number of constants
   * list of constant values
-  * number of parameters
-  * [float32] * P - initial parameter values
-  * number of parameter names
+  * list of initial parameter values (floats)
   * list of named parameters and their index
-  * number of unit generators (UGens)
   * list of UGens (using the `%SuperCollider.SynthDef.UGen{}` struct)
-  * number of variants
   * list of named varient specs (named key-value pairs with the value as a float.)
 
   **TODO: Currently there isn't a 'friendly' DSL for creating SynthDefs but that is on the roadmap!**
@@ -37,60 +32,45 @@ defmodule SuperCollider.SynthDef do
     [
       %SuperCollider.SynthDef{
         name: "ambient",
-        constant_count: 1,
         constant_values_list: [0.2],
-        parameter_count: 1,
         parameter_values_list: [0.0],
-        parameter_names_count: 1,
-        parameter_names_list: [
-          %{_enum_index: 0, parameter_index: 0, parameter_name: "out"}
-        ],
-        ugen_count: 4,
+        parameter_names_list: [%{parameter_index: 0, parameter_name: "out"}],
         ugen_specs_list: [
           %SuperCollider.SynthDef.UGen{
             class_name: "Control",
             calculation_rate: 1,
             special_index: 0,
-            inputs_count: 0,
             input_specs_list: [],
-            outputs_count: 1,
             output_specs_list: [%{_enum_count: 0, calculation_rate: 1}]
           },
           %SuperCollider.SynthDef.UGen{
             class_name: "BrownNoise",
             calculation_rate: 2,
             special_index: 0,
-            inputs_count: 0,
             input_specs_list: [],
-            outputs_count: 1,
             output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
           },
           %SuperCollider.SynthDef.UGen{
             class_name: "BinaryOpUGen",
             calculation_rate: 2,
             special_index: 2,
-            inputs_count: 2,
             input_specs_list: [
-              %{_enum_count: 0, index: 1, output_index: 0, type: :ugen},
-              %{_enum_count: 1, index: 0, type: :constant}
+              %{index: 1, output_index: 0, type: :ugen},
+              %{index: 0, type: :constant}
             ],
-            outputs_count: 1,
             output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
           },
           %SuperCollider.SynthDef.UGen{
             class_name: "Out",
             calculation_rate: 2,
             special_index: 0,
-            inputs_count: 2,
             input_specs_list: [
-              %{_enum_count: 0, index: 0, output_index: 0, type: :ugen},
-              %{_enum_count: 1, index: 2, output_index: 0, type: :ugen}
+              %{index: 0, output_index: 0, type: :ugen},
+              %{index: 2, output_index: 0, type: :ugen}
             ],
-            outputs_count: 0,
             output_specs_list: []
           }
         ],
-        varient_count: 0,
         varient_specs_list: []
       }
     ]
@@ -121,38 +101,18 @@ defmodule SuperCollider.SynthDef do
   alias SuperCollider.SynthDef.Encoder
   alias SuperCollider.SynthDef.ScFile
 
-  # The name of the synth definition
-  # All of the constants used in the UGen graph
-  # Names for parameters.
-  # Parameters can have no name, and a single name can be used for multiple parameters.
-  # The list of UGens that make up this synth definition.
-  # The variants of this synth definition.
-
   defstruct ~w[
     name
 
-    constant_count constant_values_list
+    constant_values_list
 
-    parameter_count parameter_values_list
-    parameter_names_count parameter_names_list
+    parameter_values_list
+    parameter_names_list
 
-    ugen_count ugen_specs_list
+    ugen_specs_list
 
-    varient_count varient_specs_list
+    varient_specs_list
   ]a
-
-  # defstruct ~w[
-  #   name
-
-  #   constant_values_list
-
-  #   parameter_values_list
-  #   parameter_names_list
-
-  #   ugen_specs_list
-
-  #   varient_specs_list
-  # ]a
 
 
   @doc """
@@ -228,31 +188,17 @@ defmodule SuperCollider.SynthDef do
   end
 
   def encode(synthdef) do
-      IO.inspect synthdef, label: "SynthDef to encode"
       Encoder.write_pstring(synthdef.name) <>
-      Encoder.write_32(synthdef.constant_count) <>
+      Encoder.write_32(length(synthdef.constant_values_list)) <>
       Encoder.write_floats(synthdef.constant_values_list) <>
-      Encoder.write_32(synthdef.parameter_count) <>
+      Encoder.write_32(length(synthdef.parameter_values_list)) <>
       Encoder.write_floats(synthdef.parameter_values_list) <>
-      Encoder.write_32(synthdef.parameter_names_count) <>
+      Encoder.write_32(length(synthdef.parameter_names_list)) <>
       Encoder.write_name_integer_pairs(synthdef.parameter_names_list) <>
-      UGen.encode(synthdef.ugen_count, synthdef.ugen_specs_list) <>
-      Encoder.write_16(synthdef.varient_count) <>
+      UGen.encode(length(synthdef.ugen_specs_list), synthdef.ugen_specs_list) <>
+      Encoder.write_16(length(synthdef.varient_specs_list)) <>
       Encoder.write_name_float_pairs(synthdef.varient_specs_list)
   end
-
-  # def encode(synthdef) do
-  #     Encoder.write_pstring(synthdef.name) <>
-  #     Encoder.write_32(length(synthdef.constant_values_list)) <>
-  #     Encoder.write_floats(synthdef.constant_values_list) <>
-  #     Encoder.write_32(length(synthdef.parameter_values_list)) <>
-  #     Encoder.write_floats(synthdef.parameter_values_list) <>
-  #     Encoder.write_32(length(synthdef.parameter_names_list)) <>
-  #     Encoder.write_name_integer_pairs(synthdef.parameter_names_list) <>
-  #     UGen.encode(length(synthdef.ugen_specs_list), synthdef.ugen_specs_list) <>
-  #     Encoder.write_16(length(synthdef.varient_specs_list)) <>
-  #     Encoder.write_name_float_pairs(synthdef.varient_specs_list)
-  # end
 
   defp parse_synthdef_name({synth_def_struct, bin_data}) do
     {synth_name, rest_synthdef} = Parser.parse_pstring(bin_data)
@@ -268,14 +214,9 @@ defmodule SuperCollider.SynthDef do
     {constant_values_list, rem_binary} = Parser.parse_floats(rest_synthdef, num_constants)
 
     {
-      %SynthDef{synth_def_struct | constant_count: num_constants, constant_values_list: constant_values_list},
+      %SynthDef{synth_def_struct | constant_values_list: constant_values_list},
       rem_binary
     }
-
-    # {
-    #   %SynthDef{synth_def_struct | constant_values_list: constant_values_list},
-    #   rem_binary
-    # }
   end
 
   defp parse_synthdef_parameters({synth_def_struct, bin_data}) do
@@ -283,13 +224,9 @@ defmodule SuperCollider.SynthDef do
     {param_values_list, rem_binary} = Parser.parse_floats(rest_synthdef, num_params)
 
     {
-      %SynthDef{synth_def_struct | parameter_count: num_params, parameter_values_list: param_values_list},
+      %SynthDef{synth_def_struct | parameter_values_list: param_values_list},
       rem_binary
     }
-    # {
-    #   %SynthDef{synth_def_struct | parameter_values_list: param_values_list},
-    #   rem_binary
-    # }
   end
 
   defp parse_synthdef_parameter_names({synth_def_struct, bin_data}) do
@@ -297,13 +234,9 @@ defmodule SuperCollider.SynthDef do
     {param_names_and_values_list, rem_binary} = Parser.parse_name_integer_pairs(rest_synthdef, num_param_names)
 
     {
-      %SynthDef{synth_def_struct | parameter_names_count: num_param_names, parameter_names_list: param_names_and_values_list},
+      %SynthDef{synth_def_struct | parameter_names_list: param_names_and_values_list},
       rem_binary
     }
-    # {
-    #   %SynthDef{synth_def_struct | parameter_names_list: param_names_and_values_list},
-    #   rem_binary
-    # }
   end
 
   defp parse_synthdef_varients({synth_def_struct, bin_data}) do
@@ -311,12 +244,8 @@ defmodule SuperCollider.SynthDef do
     {varient_names_and_values_list, rem_binary} = Parser.parse_name_float_pairs(rest_synthdef, num_varients)
 
     {
-      %SynthDef{synth_def_struct | varient_count: num_varients, varient_specs_list: varient_names_and_values_list},
+      %SynthDef{synth_def_struct | varient_specs_list: varient_names_and_values_list},
       rem_binary
     }
-    # {
-    #   %SynthDef{synth_def_struct | varient_specs_list: varient_names_and_values_list},
-    #   rem_binary
-    # }
   end
 end

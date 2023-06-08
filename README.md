@@ -1,4 +1,7 @@
-# SuperCollider
+<h1><img src="supercollider-elixir-logo.png" alt="Supercollider Elixir"></h1>
+
+[![Documentation](http://img.shields.io/badge/hex.pm-docs-green.svg?style=flat)](https://hexdocs.pm/supercollider)
+[![Package](https://img.shields.io/hexpm/v/explorer.svg)](https://hex.pm/packages/supercollider)
 
 ## Overview
 This is an Elixir library for interacting with [SuperCollider](https://supercollider.github.io/), an audio synthesis and composition platform.
@@ -17,7 +20,7 @@ Running on top of the Erlang virtual machine, you’ll find Elixir on embedded s
 
 Elixir also offers [Livebook](https://livebook.dev/), which can be used as a flexible creative coding environment.
 
-If Elixir isn’t your thing, there are other libraries in other programming languages for interacting with SuperCollider, such as [Overtone (Clojure)](https://overtone.github.io/), [Tidal (Haskell)](https://tidalcycles.org/), [Sonic Pi(built with Ruby, Erlang and Elixir)](https://sonic-pi.net/), [Sorceress (Rust)](https://github.com/ooesili/sorceress) and a number in [Python](https://pypi.org/project/supercollider/).
+If Elixir isn’t your thing, there are other libraries in other programming languages for interacting with SuperCollider, such as [Overtone (Clojure)](https://overtone.github.io/), [Tidal (Haskell)](https://tidalcycles.org/), [Sonic Pi (built with Ruby, Erlang and Elixir)](https://sonic-pi.net/), [Sorceress (Rust)](https://github.com/ooesili/sorceress) and a number in [Python](https://pypi.org/project/supercollider/).
 
 ## Status
 This library is currently under active development and it’s API is likely to change.
@@ -89,14 +92,14 @@ The package can be installed by adding `supercollider` to your list of dependenc
 ```elixir
 def deps do
   [
-    {:supercollider, "~> 0.1.0"}
+    {:supercollider, "~> 0.1.2"}
   ]
 end
 ```
 
 ### Using within LiveBook and IEx (coming soon)
 ```elixir
-Mix.install([{:supercollider, "~> 0.1.0"}])
+Mix.install([{:supercollider, "~> 0.1.2"}])
 ```
 ## Documentation
 The docs can be found at <https://hexdocs.pm/supercollider>.
