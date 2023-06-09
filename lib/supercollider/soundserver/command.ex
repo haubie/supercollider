@@ -1,8 +1,6 @@
 defmodule SuperCollider.SoundServer.Command do
   @moduledoc """
-  ## SuperCollider Server Synth Engine Commands
-
-  This module is used to send OSC commands to SuperCollider's server (scsynth or supernova) via UDP.
+  This module is used to send [Open Sound Control (OSC)](https://en.wikipedia.org/wiki/Open_Sound_Control) commands to SuperCollider's server (scsynth or supernova) via UDP.
 
   These commands make use of the server configuration and state details in %SoundServer{}, and is most cases, a %SoundServer{} struct is passed as the first parameter in these funtions.
 
@@ -12,10 +10,9 @@ defmodule SuperCollider.SoundServer.Command do
   The functions of this module are grouped into the following categories:
   - scserver communication helper functions, such as to encode OSC messages and to send them to a scserver insrtance
   - scserver commands, following the SuperCollider Server Synth Engine Command Reference:
-    - Top-Level Commands
-    - Synth Definition Commands
-    - Node Commands
-    - Synth Commands
+    - General Commands - such as for getting *status* or *version* information or *quitting* scynth/supernova.
+    - Node Commands - for manipulating nodes including *freeing* them
+    - Synth Commands - such as for *sending* or *loading* synth defs, and *creating* a new synth
     - Group Commands
     - Unit Generator Commands
     - Buffer Commands
@@ -47,6 +44,7 @@ defmodule SuperCollider.SoundServer.Command do
     :gen_udp.send(soundserver.socket, soundserver.hostname||soundserver.ip, soundserver.port, osc_message)
   end
 
+  @doc section: :osc
   @doc """
   Takes an address and a list of optional arguments and encodes them as an OSC message.
 
@@ -153,7 +151,7 @@ defmodule SuperCollider.SoundServer.Command do
     |> send_osc("/cmd", [command_name] ++ arguments)
   end
 
-  @doc section: :top_level_commands
+  @doc section: :osc
   @doc """
   Displays incoming OSC messages.
 

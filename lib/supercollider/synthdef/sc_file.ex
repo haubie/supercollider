@@ -12,6 +12,7 @@ defmodule SuperCollider.SynthDef.ScFile do
 
   Key functions in this module include:
   - `parse/1`: for parsing a .scsyndef file. This will read the file from disc and call the `decode/1` function.
+  - `decode/1`: for deconding a scsyndef binary into an `%ScFile{}` struct.
   - `encode/1`: for encoding one or more `%SynthDef{}` into the scsyndef binary format.
 
 
@@ -167,7 +168,11 @@ defmodule SuperCollider.SynthDef.ScFile do
   end
 
   @doc """
-  Takes:
+  Encodes an `%ScFile{}` or `%SynthDef{}` structs into SuperCollider's scsyndef binary format.
+
+  This can be used to either send as binary data to to scynth or supernova via the `:d_recv` command, or write as a file to disc .scsyndef file.
+
+  Takes either of the following as the first parameter:
   - an `%ScFile{}` and encodes it into a new scsyndef binary
   - single `%SynthDef{}` and encodes it into a new scsyndef binary (converting it to a `%ScFile{}` first)
   - list of `%SynthDef{}` and encodes them into a new scsyndef binary (converting it to a `%ScFile{}` first).
@@ -177,7 +182,6 @@ defmodule SuperCollider.SynthDef.ScFile do
     num_synth_defs = length(synthdefs)
     encode_header(num_synth_defs) <> SynthDef.encode(synthdefs)
   end
-
   def encode(synthdef) do
     encode_header(1) <> SynthDef.encode(synthdef)
   end
@@ -233,7 +237,7 @@ defmodule SuperCollider.SynthDef.ScFile do
   end
 
   defp parse_synthdef(binary_data, acc, num) when num > 0 do
-    {synthdef_struct, data} = SynthDef.parse(binary_data)
+    {synthdef_struct, data} = SynthDef.decode(binary_data)
     parse_synthdef(data, [synthdef_struct] ++ acc, num-1)
   end
 

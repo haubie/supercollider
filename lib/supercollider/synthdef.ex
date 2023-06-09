@@ -4,8 +4,8 @@ defmodule SuperCollider.SynthDef do
   The SynthDef is module and struct for SuperCollider Synthesis Definitions.
 
   This module includes functions for:
-  * converting a binary scsyndef to a `%SynthDef{}` struct with `parser/1` or `from_file/1`
-  * encoding `%SynthDef{}` to the binary scsyndef file format.
+  * converting a binary scsyndef to a `%SynthDef{}` struct with `from_file/1`
+  * encoding `%SynthDef{}` to the binary scsyndef file format with `to_binary/1`.
 
   The SynthDef struct contains the:
 
@@ -118,7 +118,7 @@ defmodule SuperCollider.SynthDef do
   @doc """
   Defines a new SynthDef.
 
-  Takes a name (string) as the first parameter.
+  Takes a list of key-values used to populate the `%SynthDef{}` struct.
 
   A SynthDef consists of the following:
   * name (of synthdef)
@@ -128,15 +128,39 @@ defmodule SuperCollider.SynthDef do
   * UGen specs
   * varient specs
 
+  ## Example
+  ```
+  SynthDef.new()
+
+  # Returns an empty struct by default:
+  # %SuperCollider.SynthDef{
+  #   name: nil,
+  #   constant_values_list: nil,
+  #   parameter_values_list: nil,
+  #   parameter_names_list: nil,
+  #   ugen_specs_list: nil,
+  #   varient_specs_list: nil
+  # }
+
+  SynthDef.new(name: "MySynthdef")
+
+  # Returns the struct with the name populated:
+  # %SuperCollider.SynthDef{
+  #   name: "MySynthdef",
+  #   ...
+  # }
+  ```
   """
-  def new(name) do
-    %SynthDef{name: name}
+  def new(opts \\ []) do
+    struct(__MODULE__, opts)
   end
 
   @doc """
   Encodes one or more `%SynthDef{}` into SuperCollider's binary file format.
 
   This function is the same as `SuperCollider.SynthDef.ScFile.encode/1`.
+
+  See the top of this page (module doc) for an example of `to_binary/1`.
   """
   def to_binary(synthdef), do: ScFile.encode(synthdef)
 
@@ -144,17 +168,69 @@ defmodule SuperCollider.SynthDef do
   Parses a SuperCollider .scynthdef binary file into an`%ScFile{}` struct.
 
   This function is similar to `SuperCollider.SynthDef.ScFile.parse/1` except this function will only return the list of `%SyntDef{}`'s contained in the file, and not any of the other file metadata.
+
+  ## Example
+  ```
+  SynthDef.from_file("ambient.scsyndef")
+
+  # Returns the list of SynthDef's contained in the file, without the additional file metadata, e.g.:
+  # [
+  #   %SuperCollider.SynthDef{
+  #     name: "ambient",
+  #     constant_values_list: [0.2],
+  #     parameter_values_list: [0.0],
+  #     parameter_names_list: [%{parameter_index: 0, parameter_name: "out"}],
+  #     ugen_specs_list: [
+  #       %SuperCollider.SynthDef.UGen{
+  #         class_name: "Control",
+  #         calculation_rate: 1,
+  #         special_index: 0,
+  #         input_specs_list: [],
+  #         output_specs_list: [%{_enum_count: 0, calculation_rate: 1}]
+  #       },
+  #       %SuperCollider.SynthDef.UGen{
+  #         class_name: "BrownNoise",
+  #         calculation_rate: 2,
+  #         special_index: 0,
+  #         input_specs_list: [],
+  #         output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
+  #       },
+  #       %SuperCollider.SynthDef.UGen{
+  #         class_name: "BinaryOpUGen",
+  #         calculation_rate: 2,
+  #         special_index: 2,
+  #         input_specs_list: [
+  #           %{index: 1, output_index: 0, type: :ugen},
+  #           %{index: 0, type: :constant}
+  #         ],
+  #         output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
+  #       },
+  #       %SuperCollider.SynthDef.UGen{
+  #         class_name: "Out",
+  #         calculation_rate: 2,
+  #         special_index: 0,
+  #         input_specs_list: [
+  #           %{index: 0, output_index: 0, type: :ugen},
+  #           %{index: 2, output_index: 0, type: :ugen}
+  #         ],
+  #         output_specs_list: []
+  #       }
+  #     ],
+  #     varient_specs_list: []
+  #   }
+  # ]
+  ```
   """
   def from_file(filename) do
     parsed_file = ScFile.parse(filename)
     parsed_file.synth_defs
   end
 
-
+  @doc section: :encode_decode
   @doc """
   Parses syndef binary data. This function is not usually called directly, but is automatically called as part of `ScFile.parse(filename)`.
 
-  Parsing of the SynthDef is in the follwoing order:
+  Parsing of the SynthDef is in the following order:
   * name (of synthdef)
   * constants
   * parameters
@@ -164,16 +240,17 @@ defmodule SuperCollider.SynthDef do
 
   Returns a tuple in the format `{%SynthDef{}, binary_data}`. `binary_data` should be empty if all data was successfully parsed.
   """
-  def parse(bin_data) do
+  def decode(bin_data) do
       {%SynthDef{}, bin_data}
       |> parse_synthdef_name()
       |> parse_synthdef_constants()
       |> parse_synthdef_parameters()
       |> parse_synthdef_parameter_names()
-      |> UGen.parse()
+      |> UGen.decode()
       |> parse_synthdef_varients()
   end
 
+  @doc section: :encode_decode
   @doc """
   Encodes SynthDefs into SuperCollider's binary format.
 

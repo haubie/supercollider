@@ -26,12 +26,13 @@ defmodule SuperCollider.SynthDef.UGen do
     output_specs_list
   ]a
 
+  @doc section: :encode_decode
   @doc"""
   The parse function is used as part deconstructing UGen binary data in SuperCollider scsyndef v2 files.
 
   It is not usually accessed directly, but is called via `SuperCollider.SynthDef.ScFile.parse(filename)`.
   """
-  def parse({synth_def_struct, binary_data}) do
+  def decode({synth_def_struct, binary_data}) do
     {num_ugens, rest_bin_data} = Parser.parse_integer_32(binary_data)
     {ugen_specs_list, rem_binary} = parse_ugens(rest_bin_data, num_ugens)
 
@@ -42,6 +43,7 @@ defmodule SuperCollider.SynthDef.UGen do
   end
 
 
+  @doc section: :encode_decode
   @doc """
   Encodes UGens into SuperCollider's binary format.
 

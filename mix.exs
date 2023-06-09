@@ -6,7 +6,7 @@ defmodule SuperCollider.MixProject do
       app: :supercollider,
       name: "SuperCollider",
       description: "An Elixir library for interacting with SuperCollider, an audio synthesis and composition platform.",
-      version: "0.1.2",
+      version: "0.1.3",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -19,6 +19,30 @@ defmodule SuperCollider.MixProject do
         extras: [
           "README.md",
           {:"LICENSE", [title: "License (MIT)"]},
+        ],
+        groups_for_modules: [
+          # SuperCollider,
+          # SuperCollider.SynthDef,
+          # SuperCollider.SynthDef.UGen,
+          Server: [
+            SuperCollider.SoundServer,
+            SuperCollider.SoundServer.Command,
+            SuperCollider.SoundServer.Response
+          ],
+          Helpers: [
+            SuperCollider.SynthDef.ScFile,
+            SuperCollider.SynthDef.Encoder,
+            SuperCollider.SynthDef.Parser
+          ]
+        ],
+        groups_for_docs: [
+          "OSC communication": &(&1[:section] == :osc),
+          "General commands": &(&1[:section] == :top_level_commands),
+          "Synth commands": &(&1[:section] == :synth_commands),
+          "Node commands": &(&1[:section] == :node_commands),
+          "Group commands": &(&1[:section] == :group_commands),
+          "Unit generator commands": &(&1[:section] == :ug_commands),
+          "Support functions": &(&1[:section] == :encode_decode),
         ]
       ]
     ]

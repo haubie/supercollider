@@ -1,4 +1,6 @@
-# ![Supercollider Elixir](https://raw.githubusercontent.com/haubie/supercollider/main/supercollider-elixir-logo.png)
+
+# README
+![Supercollider Elixir](https://raw.githubusercontent.com/haubie/supercollider/main/supercollider-elixir-logo.png)
 
 [![Documentation](http://img.shields.io/badge/hex.pm-docs-green.svg?style=flat)](https://hexdocs.pm/supercollider)
 [![Package](https://img.shields.io/hexpm/v/supercollider.svg)](https://hex.pm/packages/supercollider)
@@ -20,7 +22,7 @@ Running on top of the Erlang virtual machine, you’ll find Elixir on embedded s
 
 Elixir also offers [Livebook](https://livebook.dev/), which can be used as a flexible creative coding environment.
 
-If Elixir isn’t your thing, there are other libraries in other programming languages for interacting with SuperCollider, such as [Overtone (Clojure)](https://overtone.github.io/), [Tidal (Haskell)](https://tidalcycles.org/), [Sonic Pi (built with Ruby, Erlang and Elixir)](https://sonic-pi.net/), [Sorceress (Rust)](https://github.com/ooesili/sorceress) and a number in [Python](https://pypi.org/project/supercollider/).
+If Elixir isn’t your thing, there are other [libraries in other programming languages](https://github.com/supercollider/supercollider/wiki/Systems-interfacing-with-SC) for interacting with SuperCollider, such as [Overtone (Clojure)](https://overtone.github.io/), [Tidal (Haskell)](https://tidalcycles.org/), [Sonic Pi (built with Ruby, Erlang and Elixir)](https://sonic-pi.net/), [Sorceress (Rust)](https://github.com/ooesili/sorceress) and a number in [Python](https://pypi.org/project/supercollider/).
 
 ## Status
 This library is currently under active development and it’s API is likely to change.
@@ -28,8 +30,9 @@ This library is currently under active development and it’s API is likely to c
 ## Architecture
 This library consists of a number of modules, the main ones being:
 -	`SuperCollider` which allows you to quickly get going without needing to understand too much of this library’s architecture.
--	`SuperCollider.SoundServer` a GenServer which is used to create the main process for sending and listening to scsynth or supernova messages. Messages are sent using OSC packets.
 -	`SuperCollider.SynthDef` which is an Elixir struct representation of SuperCollider’s synth definitions, built from networks of UGens (unit generators) which generate or process both audio and control signals.
+-	`SuperCollider.SoundServer` a GenServer which is used to create the main process for sending and listening to scsynth or supernova messages. Messages are sent using [Open Sound Control (OSC)](https://en.wikipedia.org/wiki/Open_Sound_Control) protocol via UDP.
+
 
 ## Example
 Below shows some basic examples of:
@@ -87,19 +90,19 @@ SuperCollider.command(:d_recv, encoded_data)
 ### Installation of SuperCollider
 You’ll need to have SuperCollider installed. See SuperCollider’s [downloads]( https://supercollider.github.io/downloads) page for supported platforms. Currently there are Mac, Linux, Windows builds. It can be built on embedded platforms, including [Raspberry Pi]( https://github.com/supercollider/supercollider/blob/develop/README_RASPBERRY_PI.md), [Beagle Bone Black]( https://github.com/supercollider/supercollider/blob/develop/README_BEAGLEBONE_BLACK.md) and [Bela](https://github.com/supercollider/supercollider/blob/develop/README_BELA.md).
 
-### Adding it to your Elixir project (coming soon)
+### Adding it to your Elixir project
 The package can be installed by adding `supercollider` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:supercollider, "~> 0.1.2"}
+    {:supercollider, "~> 0.1.3"}
   ]
 end
 ```
 
-### Using within LiveBook and IEx (coming soon)
+### Using within LiveBook and IEx
 ```elixir
-Mix.install([{:supercollider, "~> 0.1.2"}])
+Mix.install([{:supercollider, "~> 0.1.3"}])
 ```
 ## Documentation
 The docs can be found at <https://hexdocs.pm/supercollider>.

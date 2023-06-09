@@ -19,6 +19,8 @@ defmodule SuperCollider.SoundServer do
 
 
   @moduledoc """
+  GenServer for communicating with scserver or supernova.
+
   This module is a:
   - GenServer which is used to communicate with SuperCollider's scserver or supernova
   - Struct which holds the server's basic state and configuration.
@@ -278,7 +280,7 @@ defmodule SuperCollider.SoundServer do
          :ok <- maybe_boot_scsynth(%{soundserver | socket: socket}) do
       %__MODULE__{soundserver | socket: socket}
     else
-      _any -> {:error, "Could not be initialised"}
+      _any -> {:error, "Could not be initialised. UDP socket could not be opened."}
     end
   end
 
@@ -324,6 +326,47 @@ defmodule SuperCollider.SoundServer do
   - `true` if if a '/status.reply' message was recieved via UDP.
   - `false` if either a non-compliant message is recieved or no message is recieved after 5 seconds. In this case the scsynth has been considered not to be loaded.
 
+  Note: an UDP socket must be set on the `%SoundServer{}` state, e.g.:
+
+  ```
+  soundserver =
+    %SuperCollider.SoundServer{
+      socket: #Port<0.8>, # Socket established here, otherwise this would be nil
+      ip: '127.0.0.1',
+      hostname: 'localhost',
+      port: 57110,
+      type: :scsynth,
+      responses: %{}
+    }
+
+  SuperCollider.SoundServer.scsynth_booted?(soundserver)
+  # Returns true if booted
+  ```
+
+  If you don't have a curently opened socket, you can get one by calling `SoundServer.open/1`, e.g.:
+  ```
+  {:ok, socket} = SoundServer.open()
+
+  soundserver = SoundServer.new(socket: socket)
+
+  # Returns SoundServer struct with socket populated:
+  # %SuperCollider.SoundServer{
+  #   socket: #Port<0.9>,
+  #   ip: '127.0.0.1',
+  #   hostname: 'localhost',
+  #   port: 57110,
+  #   type: :scsynth,
+  #   responses: %{}
+  # }
+
+  SuperCollider.SoundServer.scsynth_booted?(soundserver)
+
+  # If already booted returns true
+  # 11:53:43.734 [info] scsynth - already booted ✅
+  # true
+  ```
+
+  Sockets are automatically created when SoundServer is booted in the typical way through `SoundServer.start_link` or `SuperCollider.start`.
   """
   def scsynth_booted?(soundserver) do
     Command.send_osc(soundserver, "/status")

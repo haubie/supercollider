@@ -35,7 +35,7 @@ defmodule SuperCollider do
 
   The pid for the `SuperCollider.SoundServer` is also stored as a persisitient term under `:supercollider_soundserver`. This is used by the `SuperCollider.state/0`, `SuperCollider.response/0`, `SuperCollider.response/1`, `SuperCollider.command/1` and `SuperCollider.command/2` functions so that they're passed the global SoundServer pid without having to specify it.
 
-  If you want to directly interact with a SoundServer through it's pid, see the equivalent functions under `SuperCollider.SoundServer`.
+  If you want to directly interact with a SoundServer through it's pid, see the equivalent functions under `SuperCollider.SoundServer`, such as `{:ok, pid} = SuperCollider.SoundServer.start_link()` or through `{:ok, pid} = GenServer.start_link(SoundServer, SoundServer.new())`.
 
   ## Options
   Additionally, this function can take options:
@@ -122,7 +122,7 @@ defmodule SuperCollider do
   For example, if a version request was made:
 
   ```
-  SuperCollider.command :version
+  SuperCollider.command(:version)
   ```
 
   To get the response held by the `SuperCollider.SoundServer` you'd call:
@@ -166,7 +166,6 @@ defmodule SuperCollider do
 
   This function accepts the following parameters:
   * command, in a form of an atom representing SuperCollider commands (See: `SuperCollider.SoundServer.Command` for details)
-  * args, which is optional and needed only for commands which take them. Multiple options can be provided as a list.
 
   ## Examples
   ```
@@ -182,6 +181,22 @@ defmodule SuperCollider do
     end
   end
 
+  @doc """
+  Send a command to the default SoundServer with arguments.
+
+  This function accepts the following parameters:
+  * command, in a form of an atom representing SuperCollider commands (See: `SuperCollider.SoundServer.Command` for details)
+  * args, commands which take them. Multiple options can be provided as a list.
+
+  ## Examples
+  ```
+  # Send a command to play a basic 300Hz sinusoidal sound on node 100
+  SuperCollider.command(:s_new, ["sine", 100, 1, 1, ["freq", 300]])
+
+  # Stop the sound by freeing node 100
+  SuperCollider.command(:n_free, 100)
+  ```
+  """
   def command(command_name, args) do
     case :persistent_term.get(:supercollider_soundserver, nil) do
       nil -> {:error, "Global SuperCollider.SoundServer pid not stored as a persistient term under :supercollider_soundserver"}
