@@ -26,6 +26,10 @@ defmodule SuperCollider do
   # Stop the sine wave by freeing node 600
   SC.command(:n_free, 600)
   ```
+
+  ## LiveBook tour
+  You can explore this library further in the [LiveBook demo](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2Fhaubie%2Fsupercollider%2Fblob%2Fmain%2Flivebook%2Fsupercollider_tour.livemd).
+  [![Run in Livebook](https://livebook.dev/badge/v1/blue.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2Fhaubie%2Fsupercollider%2Fblob%2Fmain%2Flivebook%2Fsupercollider_tour.livemd)
   """
 
   alias SuperCollider.SoundServer

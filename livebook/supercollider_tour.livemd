@@ -12,84 +12,12 @@ Mix.install([
 <!-- livebook:{"output":true} -->
 
 ```
-* Getting supercollider (https://github.com/haubie/supercollider.git)
-remote: Enumerating objects: 315, done.        
-remote: Counting objects: 100% (315/315), done.        
-remote: Compressing objects: 100% (201/201), done.        
-remote: Total 315 (delta 119), reused 299 (delta 103), pack-reused 0        
-origin/HEAD set to main
-Resolving Hex dependencies...
-Resolution completed in 0.01s
-New:
-  osc 0.1.2
-* Getting osc (Hex package)
-warning: variable "deps" does not exist and is being expanded to "deps()", please use parentheses to remove the ambiguity or change the variable name
-  /Users/haubie/Library/Caches/mix/installs/elixir-1.14.3-erts-13.1.4/65dc787146a7b8fb892473272c6ebd40/deps/osc/mix.exs:11: Osc.Mixfile.project/0
-
-warning: variable "package" does not exist and is being expanded to "package()", please use parentheses to remove the ambiguity or change the variable name
-  /Users/haubie/Library/Caches/mix/installs/elixir-1.14.3-erts-13.1.4/65dc787146a7b8fb892473272c6ebd40/deps/osc/mix.exs:12: Osc.Mixfile.project/0
-
-==> osc
-Compiling 13 files (.ex)
-warning: incompatible types:
-
-    float() !~ integer()
-
-in expression:
-
-    # lib/osc/integer.ex:5
-    <<integer::integer-big-size(32)>>
-
-where "integer" was given the type integer() | float() in:
-
-    # lib/osc/integer.ex:4
-    abs(integer)
-
-where "integer" was given the type integer() in:
-
-    # lib/osc/integer.ex:5
-    <<integer::integer-big-size(32)>>
-
-Conflict found at
-  lib/osc/integer.ex:5: OSC.Encoder.Integer.encode/2
-
-warning: incompatible types:
-
-    float() !~ integer()
-
-in expression:
-
-    # lib/osc/integer.ex:5
-    <<integer::integer-big-size(64)>>
-
-where "integer" was given the type integer() | float() in:
-
-    # lib/osc/integer.ex:4
-    abs(integer)
-
-where "integer" was given the type integer() in:
-
-    # lib/osc/integer.ex:5
-    <<integer::integer-big-size(64)>>
-
-Conflict found at
-  lib/osc/integer.ex:5: OSC.Encoder.Integer.encode/2
-
-Generated osc app
-==> supercollider
-Compiling 9 files (.ex)
-Generated supercollider app
-```
-
-<!-- livebook:{"output":true} -->
-
-```
 :ok
 ```
 
 ## Introduction
 
-![](images/supercollider-elixir-logo.png)
+![](https://raw.githubusercontent.com/haubie/supercollider/main/supercollider-elixir-logo.png)
 
 <!-- livebook:{"break_markdown":true} -->
 
@@ -191,16 +119,16 @@ INIT: %SuperCollider.SoundServer{
   responses: %{}
 }
 
-16:24:52.526 [info] scsynth - waiting up to 5 seconds to see if already loaded ⏳
+19:12:35.710 [info] scsynth - waiting up to 5 seconds to see if already loaded ⏳
 
-16:24:52.537 [info] scsynth - already booted ✅
+19:12:35.727 [info] scsynth - already booted ✅
 
 ```
 
 <!-- livebook:{"output":true} -->
 
 ```
-#PID<0.522.0>
+#PID<0.216.0>
 ```
 
 By default, it will look for `scsynth`. If you prefer to use `supernova` you can pass the type option instead:
@@ -233,7 +161,7 @@ SuperCollider.command(:version)
 
 ```
 
-16:24:58.238 [info] Version: [{"Program name. May be \"scsynth\" or \"supernova\".", "scsynth"}, {"Major version number. Equivalent to sclang's Main.scVersionMajor.", 3}, {"Minor version number. Equivalent to sclang's Main.scVersionMinor.", 13}, {"Patch version name. Equivalent to the sclang code \".\" ++ Main.scVersionPatch ++ Main.scVersionTweak.", ".0"}, {"Git branch name.", "Version-3.13.0"}, {"First seven hex digits of the commit hash.", "3188503"}]
+19:12:40.959 [info] Version: [{"Program name. May be \"scsynth\" or \"supernova\".", "scsynth"}, {"Major version number. Equivalent to sclang's Main.scVersionMajor.", 3}, {"Minor version number. Equivalent to sclang's Main.scVersionMinor.", 13}, {"Patch version name. Equivalent to the sclang code \".\" ++ Main.scVersionPatch ++ Main.scVersionTweak.", ".0"}, {"Git branch name.", "Version-3.13.0"}, {"First seven hex digits of the commit hash.", "3188503"}]
 
 ```
 
@@ -251,7 +179,7 @@ SuperCollider.command(:status)
 
 ```
 
-16:25:00.316 [info] Status: [{"unused", 1}, {"number of unit generators", 0}, {"number of synths", 0}, {"number of groups", 2}, {"number of loaded synth definitions", 110}, {"average percent CPU usage for signal processing", 0.027132486924529076}, {"peak percent CPU usage for signal processing", 0.09582275152206421}, {"nominal sample rate", 44100.0}, {"actual sample rate", 44099.94790589288}]
+19:12:41.998 [info] Status: [{"unused", 1}, {"number of unit generators", 0}, {"number of synths", 0}, {"number of groups", 1}, {"number of loaded synth definitions", 2}, {"average percent CPU usage for signal processing", 0.02430117130279541}, {"peak percent CPU usage for signal processing", 0.04414306581020355}, {"nominal sample rate", 44100.0}, {"actual sample rate", 44099.94193761274}]
 
 ```
 
@@ -278,12 +206,12 @@ SuperCollider.response()
     {"unused", 1},
     {"number of unit generators", 0},
     {"number of synths", 0},
-    {"number of groups", 2},
-    {"number of loaded synth definitions", 110},
-    {"average percent CPU usage for signal processing", 0.027132486924529076},
-    {"peak percent CPU usage for signal processing", 0.09582275152206421},
+    {"number of groups", 1},
+    {"number of loaded synth definitions", 2},
+    {"average percent CPU usage for signal processing", 0.02430117130279541},
+    {"peak percent CPU usage for signal processing", 0.04414306581020355},
     {"nominal sample rate", 44100.0},
-    {"actual sample rate", 44099.94790589288}
+    {"actual sample rate", 44099.94193761274}
   ],
   version: [
     {"Program name. May be \"scsynth\" or \"supernova\".", "scsynth"},
@@ -332,12 +260,12 @@ SuperCollider.response(:status)
   {"unused", 1},
   {"number of unit generators", 0},
   {"number of synths", 0},
-  {"number of groups", 2},
-  {"number of loaded synth definitions", 110},
-  {"average percent CPU usage for signal processing", 0.027132486924529076},
-  {"peak percent CPU usage for signal processing", 0.09582275152206421},
+  {"number of groups", 1},
+  {"number of loaded synth definitions", 2},
+  {"average percent CPU usage for signal processing", 0.02430117130279541},
+  {"peak percent CPU usage for signal processing", 0.04414306581020355},
   {"nominal sample rate", 44100.0},
-  {"actual sample rate", 44099.94790589288}
+  {"actual sample rate", 44099.94193761274}
 ]
 ```
 
@@ -574,7 +502,7 @@ SuperCollider.command(:d_recv, bin_data)
 
 ```
 
-17:09:17.967 [info] /d_recv
+19:13:03.418 [info] /d_recv
 
 ```
 
@@ -652,5 +580,3 @@ SuperCollider.command(:quit)
 ```
 :ok
 ```
-
-

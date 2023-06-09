@@ -95,17 +95,20 @@ The package can be installed by adding `supercollider` to your list of dependenc
 ```elixir
 def deps do
   [
-    {:supercollider, "~> 0.1.4"}
+    {:supercollider, "~> 0.1.5"}
   ]
 end
 ```
 
 ### Using within LiveBook and IEx
 ```elixir
-Mix.install([{:supercollider, "~> 0.1.4"}])
+Mix.install([{:supercollider, "~> 0.1.5"}])
 ```
 
-Also see the interactive tour in LiveBook at [/livebook/supercollider_tour.livemd](https://github.com/haubie/supercollider/blob/main/livebook/supercollider_tour.livemd).
+#### LiveBook tour
+Also see the introductory tour in LiveBook at [/livebook/supercollider_tour.livemd](https://github.com/haubie/supercollider/blob/main/livebook/supercollider_tour.livemd).
+
+[![Run in Livebook](https://livebook.dev/badge/v1/blue.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2Fhaubie%2Fsupercollider%2Fblob%2Fmain%2Flivebook%2Fsupercollider_tour.livemd)
 
 ## Documentation
 The docs can be found at <https://hexdocs.pm/supercollider>.
