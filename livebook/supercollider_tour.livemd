@@ -4,8 +4,81 @@
 
 ```elixir
 Mix.install([
-  :supercollider
+  # :supercollider
+  {:supercollider, github: "haubie/supercollider"}
 ])
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+* Getting supercollider (https://github.com/haubie/supercollider.git)
+remote: Enumerating objects: 315, done.        
+remote: Counting objects: 100% (315/315), done.        
+remote: Compressing objects: 100% (201/201), done.        
+remote: Total 315 (delta 119), reused 299 (delta 103), pack-reused 0        
+origin/HEAD set to main
+Resolving Hex dependencies...
+Resolution completed in 0.01s
+New:
+  osc 0.1.2
+* Getting osc (Hex package)
+warning: variable "deps" does not exist and is being expanded to "deps()", please use parentheses to remove the ambiguity or change the variable name
+  /Users/haubie/Library/Caches/mix/installs/elixir-1.14.3-erts-13.1.4/65dc787146a7b8fb892473272c6ebd40/deps/osc/mix.exs:11: Osc.Mixfile.project/0
+
+warning: variable "package" does not exist and is being expanded to "package()", please use parentheses to remove the ambiguity or change the variable name
+  /Users/haubie/Library/Caches/mix/installs/elixir-1.14.3-erts-13.1.4/65dc787146a7b8fb892473272c6ebd40/deps/osc/mix.exs:12: Osc.Mixfile.project/0
+
+==> osc
+Compiling 13 files (.ex)
+warning: incompatible types:
+
+    float() !~ integer()
+
+in expression:
+
+    # lib/osc/integer.ex:5
+    <<integer::integer-big-size(32)>>
+
+where "integer" was given the type integer() | float() in:
+
+    # lib/osc/integer.ex:4
+    abs(integer)
+
+where "integer" was given the type integer() in:
+
+    # lib/osc/integer.ex:5
+    <<integer::integer-big-size(32)>>
+
+Conflict found at
+  lib/osc/integer.ex:5: OSC.Encoder.Integer.encode/2
+
+warning: incompatible types:
+
+    float() !~ integer()
+
+in expression:
+
+    # lib/osc/integer.ex:5
+    <<integer::integer-big-size(64)>>
+
+where "integer" was given the type integer() | float() in:
+
+    # lib/osc/integer.ex:4
+    abs(integer)
+
+where "integer" was given the type integer() in:
+
+    # lib/osc/integer.ex:5
+    <<integer::integer-big-size(64)>>
+
+Conflict found at
+  lib/osc/integer.ex:5: OSC.Encoder.Integer.encode/2
+
+Generated osc app
+==> supercollider
+Compiling 9 files (.ex)
+Generated supercollider app
 ```
 
 <!-- livebook:{"output":true} -->
@@ -14,7 +87,93 @@ Mix.install([
 :ok
 ```
 
-## Boot SuperCollider
+## Introduction
+
+![](images/supercollider-elixir-logo.png)
+
+<!-- livebook:{"break_markdown":true} -->
+
+This is an Elixir library for interacting with [SuperCollider](https://supercollider.github.io/), an audio synthesis and composition platform.
+
+Using a simple client-server architecture, this library works through [Open Sound Control (OSC)](https://en.wikipedia.org/wiki/Open_Sound_Control) messages sent via UDP to and from SuperCollider's audio server (called: **scynth** or **supernova** depending on which varient you're using).
+
+<!-- livebook:{"break_markdown":true} -->
+
+<!-- Learn more at https://mermaid-js.github.io/mermaid -->
+
+```mermaid
+sequenceDiagram
+    participant SuperCollider.SoundServer
+    participant scsynth
+    SuperCollider.SoundServer->>scsynth: OSC command
+    scsynth-->>SuperCollider.SoundServer: OSC response
+```
+
+<!-- livebook:{"break_markdown":true} -->
+
+By default, this library expects **scynth** or **supernova** to be [installed locally](https://supercollider.github.io/downloads) and available via localhost (although this is configurable).
+
+## Getting started
+
+### Install SuperCollider
+
+You’ll need to have SuperCollider installed. See SuperCollider’s [downloads](https://supercollider.github.io/downloads) page for supported platforms. Currently there are Mac, Linux, Windows builds. It can be built on embedded platforms, including [Raspberry Pi]( https://github.com/supercollider/supercollider/blob/develop/README_RASPBERRY_PI.md), [Beagle Bone Black]( https://github.com/supercollider/supercollider/blob/develop/README_BEAGLEBONE_BLACK.md) and [Bela](https://github.com/supercollider/supercollider/blob/develop/README_BELA.md).
+
+Once you have it installed, you should be able to continue with the examples in the livebook.
+
+### SuperCollider concepts
+
+If you're new to SuperCollider, there are some foundational concepts you'll need to be aware of. The most important of these are **UGen** and **SynthDef**.
+
+#### UGen (Unit generator)
+
+* UGens process or generate sound and control signals.
+* UGens can be thought of as 'calculations with signals'.
+* UGens can have many inputs, but always have a single output.
+* They are the basic building blocks of synth definitions.
+* To play a UGen, it needs to be compiled in a SynthDef and played on the server in a Synth.
+* There are [UGens that come with SuperCollider](https://doc.sccode.org/Guides/Tour_of_UGens.html), or you can download the many [community contributed UGens](http://supercollider.github.io/sc3-plugins/).
+
+For a demonstration in SuperCollider's language (sclang), watch the [Supercollider Concepts - Ugens](https://www.youtube.com/watch?v=aQ78TlrIfWU) video.
+
+#### SynthDef (Synth definition)
+
+* SynthDefs describe how different UGens will be patched together to create sounds.
+* SynthDefs are like the presets on commercial hardware and software synthesizers.
+* SynthDefs are a [graph-like](https://en.wikipedia.org/wiki/Graph_(abstract_data_type)) data-structure of UGens.
+* SynthDefs are used to create *synth nodes* on the SuperCollider's server (a synth node is a container for one or more unit generators that execute together).
+* SynthDefs are a template or recipe, upon which Synths are be based.
+* SynthDefs can be saved into a binary file format (`.scsyndef`) and loaded by SuperCollider's server.
+
+For a demonstration in SuperCollider's language (sclang), watch the [SuperCollider Tutorial: 3. Synth and SynthDef](https://www.youtube.com/watch?v=LKGGWsXyiyo) video.
+
+#### Synth and synth node
+
+* A Synth represents a single sound producing unit.
+* What it does is defined in a SynthDef, including what inputs and outputs the Synth will have.
+* On the client side, we create a synth through `SuperCollider.command(:s_new, opts)`, which will send the message to SuperCollider's server to create a new synth from a synth definition.
+* On the server (scsynth or supernova) *synth nodes* are created, which is a container representing your synth on the server. Nodes on the server have an integer *node id*.
+* We can communicate to nodes from the client using this id, e.g. `SuperCollider.command(:n_free, 100)` will free node 100.
+
+You can learn more about these concepts and more through one of the many [introductory tutorials](https://doc.sccode.org/Tutorials/Mark_Polishook_tutorial/00_Introductory_tutorial.html).
+
+### Expanding SuperCollider
+
+As UGens are the base component on the server for creating sounds, you may wish to expand the number you have installed on the SuperCollider server.
+
+One of the popular community collections of UGens is: http://supercollider.github.io/sc3-plugins/
+
+If you'd like to get familiar with the UGens pre-bundled with SuperCollider, see [Tour of UGens](https://doc.sccode.org/Guides/Tour_of_UGens.html) or browse https://doc.sccode.org/Browse.html#UGens
+
+## Starting the Elixir SuperCollider library
+
+The simplest way to get going with this library is to call the `SuperCollider.start/1` function.
+
+This does a number of things:
+
+* **Starts** an instance of `SuperCollider.SoundServer`, which is an Elixir `GenServer`
+* **Checks** if SuperCollider's scynth (or supernova) audio servers are booted locally, and if not, it will try and load it in the typical file location for your platform
+* **Stores** the PID of the `SuperCollider.SoundServer` in a globally available persistient term, so you don't have to remember to pass it around when using the top-level functions under the `SuperCollider` module.
 
 ```elixir
 SuperCollider.start()
@@ -32,21 +191,33 @@ INIT: %SuperCollider.SoundServer{
   responses: %{}
 }
 
-20:42:30.983 [info] scsynth - waiting up to 5 seconds to see if already loaded ⏳
+16:24:52.526 [info] scsynth - waiting up to 5 seconds to see if already loaded ⏳
 
-20:42:35.984 [info] scsynth - no response, scsynth likely not booted.
-
-20:42:35.984 [info] scsynth - attempting to start 🏁
+16:24:52.537 [info] scsynth - already booted ✅
 
 ```
 
 <!-- livebook:{"output":true} -->
 
 ```
-#PID<0.714.0>
+#PID<0.522.0>
 ```
 
-## Get version and status
+By default, it will look for `scsynth`. If you prefer to use `supernova` you can pass the type option instead:
+
+```
+SuperCollider.start(type: :supernova)
+```
+
+## Basic server communication: get server version and status
+
+### Sending commands
+
+To comminicate from Elixir to SuperCollider's audio server (scsynth or supernova), we need to send it commands.
+
+We can do that through the `SuperCollider.command/1` or `SuperCollider.command/2` top-level functions.
+
+Let's start with two very simple commands to get the server's version information and it's current status.
 
 ```elixir
 SuperCollider.command(:version)
@@ -62,7 +233,7 @@ SuperCollider.command(:version)
 
 ```
 
-20:42:38.500 [info] Version: [{"Program name. May be \"scsynth\" or \"supernova\".", "scsynth"}, {"Major version number. Equivalent to sclang's Main.scVersionMajor.", 3}, {"Minor version number. Equivalent to sclang's Main.scVersionMinor.", 13}, {"Patch version name. Equivalent to the sclang code \".\" ++ Main.scVersionPatch ++ Main.scVersionTweak.", ".0"}, {"Git branch name.", "Version-3.13.0"}, {"First seven hex digits of the commit hash.", "3188503"}]
+16:24:58.238 [info] Version: [{"Program name. May be \"scsynth\" or \"supernova\".", "scsynth"}, {"Major version number. Equivalent to sclang's Main.scVersionMajor.", 3}, {"Minor version number. Equivalent to sclang's Main.scVersionMinor.", 13}, {"Patch version name. Equivalent to the sclang code \".\" ++ Main.scVersionPatch ++ Main.scVersionTweak.", ".0"}, {"Git branch name.", "Version-3.13.0"}, {"First seven hex digits of the commit hash.", "3188503"}]
 
 ```
 
@@ -80,9 +251,19 @@ SuperCollider.command(:status)
 
 ```
 
-20:42:39.277 [info] Status: [{"unused", 1}, {"number of unit generators", 0}, {"number of synths", 0}, {"number of groups", 1}, {"number of loaded synth definitions", 2}, {"average percent CPU usage for signal processing", 0.024944765493273735}, {"peak percent CPU usage for signal processing", 0.26880326867103577}, {"nominal sample rate", 44100.0}, {"actual sample rate", 44099.95916484119}]
+16:25:00.316 [info] Status: [{"unused", 1}, {"number of unit generators", 0}, {"number of synths", 0}, {"number of groups", 2}, {"number of loaded synth definitions", 110}, {"average percent CPU usage for signal processing", 0.027132486924529076}, {"peak percent CPU usage for signal processing", 0.09582275152206421}, {"nominal sample rate", 44100.0}, {"actual sample rate", 44099.94790589288}]
 
 ```
+
+### Accessing server responses
+
+Assuming it worked for you, these functions return an `:ok` atom after the command has been issued.
+
+Logging will show the message recieved from the SuperCollider's server, but what if you'd like to access it and process these messages in code?
+
+For that, we need to access the `SuperCollider.SoundServer` state, which holds messages recieved from SuperCollider.
+
+We can use the top-level functions of `SuperCollider.response/0` or `SuperCollider.response/1` for that.
 
 ```elixir
 # You can fetch responses from the server using the response function:
@@ -97,12 +278,12 @@ SuperCollider.response()
     {"unused", 1},
     {"number of unit generators", 0},
     {"number of synths", 0},
-    {"number of groups", 1},
-    {"number of loaded synth definitions", 2},
-    {"average percent CPU usage for signal processing", 0.024944765493273735},
-    {"peak percent CPU usage for signal processing", 0.26880326867103577},
+    {"number of groups", 2},
+    {"number of loaded synth definitions", 110},
+    {"average percent CPU usage for signal processing", 0.027132486924529076},
+    {"peak percent CPU usage for signal processing", 0.09582275152206421},
     {"nominal sample rate", 44100.0},
-    {"actual sample rate", 44099.95916484119}
+    {"actual sample rate", 44099.94790589288}
   ],
   version: [
     {"Program name. May be \"scsynth\" or \"supernova\".", "scsynth"},
@@ -116,8 +297,12 @@ SuperCollider.response()
 }
 ```
 
+You can see from the response map, the `:status` and `:version` commands have their own key-value.
+
+We could fetch these in any of the usual Elixir-ish ways, but for convience, `SuperCollider.response/1` accepts the key you'ld like to fetch as the first parameter.
+
 ```elixir
-# Or if you just want a particular key-value:
+# Get the version response
 SuperCollider.response(:version)
 ```
 
@@ -135,433 +320,245 @@ SuperCollider.response(:version)
 ]
 ```
 
-## Load a SynthDef from file
-
 ```elixir
-alias SuperCollider.SynthDef
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-SuperCollider.SynthDef
-```
-
-```elixir
-file = "/Users/haubie/Development/supercollider_livebook/closedhat.scsyndef"
-# file = "/Users/haubie/Development/supercollider_livebook/ambient.scsyndef"
-synthdef = SynthDef.from_file(file)
+# Get the status response
+SuperCollider.response(:status)
 ```
 
 <!-- livebook:{"output":true} -->
 
 ```
 [
-  %SuperCollider.SynthDef{
-    name: "closedhat",
-    constant_count: 6,
-    constant_values_list: [8000.0, 2400.0, 0.5, 1.0, 0.0, 0.1],
-    parameter_count: 0,
-    parameter_values_list: [],
-    parameter_names_count: 0,
-    parameter_names_list: [],
-    ugen_count: 8,
-    ugen_specs_list: [
-      %SuperCollider.SynthDef.UGen{
-        class_name: "WhiteNoise",
-        calculation_rate: 2,
-        special_index: 0,
-        inputs_count: 0,
-        input_specs_list: [],
-        outputs_count: 1,
-        output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-      },
-      %SuperCollider.SynthDef.UGen{
-        class_name: "LPF",
-        calculation_rate: 2,
-        special_index: 0,
-        inputs_count: 2,
-        input_specs_list: [
-          %{_enum_count: 0, index: 0, output_index: 0, type: :ugen},
-          %{_enum_count: 1, index: 0, type: :constant}
-        ],
-        outputs_count: 1,
-        output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-      },
-      %SuperCollider.SynthDef.UGen{
-        class_name: "HPF",
-        calculation_rate: 2,
-        special_index: 0,
-        inputs_count: 2,
-        input_specs_list: [
-          %{_enum_count: 0, index: 1, output_index: 0, type: :ugen},
-          %{_enum_count: 1, index: 1, type: :constant}
-        ],
-        outputs_count: 1,
-        output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-      },
-      %SuperCollider.SynthDef.UGen{
-        class_name: "BinaryOpUGen",
-        calculation_rate: 2,
-        special_index: 2,
-        inputs_count: 2,
-        input_specs_list: [
-          %{_enum_count: 0, index: 2, type: :constant},
-          %{_enum_count: 1, index: 2, output_index: 0, type: :ugen}
-        ],
-        outputs_count: 1,
-        output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-      },
-      %SuperCollider.SynthDef.UGen{
-        class_name: "Line",
-        calculation_rate: 2,
-        special_index: 0,
-        inputs_count: 4,
-        input_specs_list: [
-          %{_enum_count: 0, index: 3, type: :constant},
-          %{_enum_count: 1, index: 4, type: :constant},
-          %{_enum_count: 2, index: 5, type: :constant},
-          %{_enum_count: 3, index: 4, type: :constant}
-        ],
-        outputs_count: 1,
-        output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-      },
-      %SuperCollider.SynthDef.UGen{
-        class_name: "BinaryOpUGen",
-        calculation_rate: 2,
-        special_index: 2,
-        inputs_count: 2,
-        input_specs_list: [
-          %{_enum_count: 0, index: 3, output_index: 0, type: :ugen},
-          %{_enum_count: 1, index: 4, output_index: 0, type: :ugen}
-        ],
-        outputs_count: 1,
-        output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-      },
-      %SuperCollider.SynthDef.UGen{
-        class_name: "Pan2",
-        calculation_rate: 2,
-        special_index: 0,
-        inputs_count: 3,
-        input_specs_list: [
-          %{_enum_count: 0, index: 5, output_index: 0, type: :ugen},
-          %{_enum_count: 1, index: 4, type: :constant},
-          %{_enum_count: 2, index: 3, type: :constant}
-        ],
-        outputs_count: 2,
-        output_specs_list: [
-          %{_enum_count: 0, calculation_rate: 2},
-          %{_enum_count: 1, calculation_rate: 2}
-        ]
-      },
-      %SuperCollider.SynthDef.UGen{
-        class_name: "Out",
-        calculation_rate: 2,
-        special_index: 0,
-        inputs_count: 3,
-        input_specs_list: [
-          %{_enum_count: 0, index: 4, type: :constant},
-          %{_enum_count: 1, index: 6, output_index: 0, type: :ugen},
-          %{_enum_count: 2, index: 6, output_index: 1, type: :ugen}
-        ],
-        outputs_count: 0,
-        output_specs_list: []
-      }
-    ],
-    varient_count: 0,
-    varient_specs_list: []
-  }
+  {"unused", 1},
+  {"number of unit generators", 0},
+  {"number of synths", 0},
+  {"number of groups", 2},
+  {"number of loaded synth definitions", 110},
+  {"average percent CPU usage for signal processing", 0.027132486924529076},
+  {"peak percent CPU usage for signal processing", 0.09582275152206421},
+  {"nominal sample rate", 44100.0},
+  {"actual sample rate", 44099.94790589288}
 ]
 ```
 
-## Encode synthdef as a binary
+### Summary
+
+So far, we've stepped though SuperCollider's client-server architecture in a basic way by:
+
+* Starting the SuperCollider
+* Sending commands
+* Accessing responses.
+
+But what about making sounds?
+
+## Creating a SynthDef
+
+**Let's begin by defining a SynthDef.**
+
+A SynthDef is our 'template' that describes how we'll patch different UGen's together to produce our sound.
+
+Let's adapt the a simple sine-oscilator from the [SuperCollider getting started guide](https://depts.washington.edu/dxscdoc/Help/Tutorials/Getting-Started/10-SynthDefs-and-Synths.html).
+
+The SynthDef writen in sclang looks like this:
+
+```
+(
+    SynthDef.new("tutorial-SinOsc-stereo", { |out|
+        var outArray;
+        outArray = [SinOsc.ar(440, 0, 0.2), SinOsc.ar(442, 0, 0.2)];
+        Out.ar(out, outArray)
+    })
+)
+```
+
+This SynthDef makes use of the following UGens:
+
+* [SinOsc](https://doc.sccode.org/Classes/SinOsc.html) which generates a sine wave
+* [Out](https://doc.sccode.org/Classes/Out.html) which writes (plays out) the audio signal generated by SinOsc to a bus.
+
+The SynthGen equivalent in this Elxir library is more verbose. This is because the above is expanded into it's full graph-like data structure. As this library develops, a friendly and more compact DSL for creating SynthDefs will be explored to generate the SynthGen graph.
 
 ```elixir
-bin_data = SynthDef.to_binary(synthdef)
-```
+# Let's alias our modules to make our SynthDef easier to read
+alias SuperCollider.SynthDef
+alias SuperCollider.SynthDef.UGen
 
-<!-- livebook:{"output":true} -->
-
-```
-<<83, 67, 103, 102, 0, 0, 0, 2, 0, 1, 9, 99, 108, 111, 115, 101, 100, 104, 97, 116, 0, 0, 0, 6, 69,
-  250, 0, 0, 69, 22, 0, 0, 63, 0, 0, 0, 63, 128, 0, 0, 0, 0, 0, 0, 61, 204, 204, 205, 0, 0, ...>>
-```
-
-```elixir
-bin_data |> :binary.bin_to_list() |> length()
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-361
-```
-
-```elixir
-decoded_synthdef = SynthDef.ScFile.decode(bin_data)
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-%SuperCollider.SynthDef.ScFile{
-  type_id: "SCgf",
-  file_version: 2,
-  synth_defs_count: 1,
-  synth_defs: [
-    %SuperCollider.SynthDef{
-      name: "closedhat",
-      constant_count: 6,
-      constant_values_list: [8000.0, 2400.0, 0.5, 1.0, 0.0, 0.1],
-      parameter_count: 0,
-      parameter_values_list: [],
-      parameter_names_count: 0,
-      parameter_names_list: [],
-      ugen_count: 8,
-      ugen_specs_list: [
-        %SuperCollider.SynthDef.UGen{
-          class_name: "WhiteNoise",
-          calculation_rate: 2,
-          special_index: 0,
-          inputs_count: 0,
-          input_specs_list: [],
-          outputs_count: 1,
-          output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-        },
-        %SuperCollider.SynthDef.UGen{
-          class_name: "LPF",
-          calculation_rate: 2,
-          special_index: 0,
-          inputs_count: 2,
-          input_specs_list: [
-            %{_enum_count: 0, index: 0, output_index: 0, type: :ugen},
-            %{_enum_count: 1, index: 0, type: :constant}
-          ],
-          outputs_count: 1,
-          output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-        },
-        %SuperCollider.SynthDef.UGen{
-          class_name: "HPF",
-          calculation_rate: 2,
-          special_index: 0,
-          inputs_count: 2,
-          input_specs_list: [
-            %{_enum_count: 0, index: 1, output_index: 0, type: :ugen},
-            %{_enum_count: 1, index: 1, type: :constant}
-          ],
-          outputs_count: 1,
-          output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-        },
-        %SuperCollider.SynthDef.UGen{
-          class_name: "BinaryOpUGen",
-          calculation_rate: 2,
-          special_index: 2,
-          inputs_count: 2,
-          input_specs_list: [
-            %{_enum_count: 0, index: 2, type: :constant},
-            %{_enum_count: 1, index: 2, output_index: 0, type: :ugen}
-          ],
-          outputs_count: 1,
-          output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-        },
-        %SuperCollider.SynthDef.UGen{
-          class_name: "Line",
-          calculation_rate: 2,
-          special_index: 0,
-          inputs_count: 4,
-          input_specs_list: [
-            %{_enum_count: 0, index: 3, type: :constant},
-            %{_enum_count: 1, index: 4, type: :constant},
-            %{_enum_count: 2, index: 5, type: :constant},
-            %{_enum_count: 3, index: 4, type: :constant}
-          ],
-          outputs_count: 1,
-          output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-        },
-        %SuperCollider.SynthDef.UGen{
-          class_name: "BinaryOpUGen",
-          calculation_rate: 2,
-          special_index: 2,
-          inputs_count: 2,
-          input_specs_list: [
-            %{_enum_count: 0, index: 3, output_index: 0, type: :ugen},
-            %{_enum_count: 1, index: 4, output_index: 0, type: :ugen}
-          ],
-          outputs_count: 1,
-          output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-        },
-        %SuperCollider.SynthDef.UGen{
-          class_name: "Pan2",
-          calculation_rate: 2,
-          special_index: 0,
-          inputs_count: 3,
-          input_specs_list: [
-            %{_enum_count: 0, index: 5, output_index: 0, type: :ugen},
-            %{_enum_count: 1, index: 4, type: :constant},
-            %{_enum_count: 2, index: 3, type: :constant}
-          ],
-          outputs_count: 2,
-          output_specs_list: [
-            %{_enum_count: 0, calculation_rate: 2},
-            %{_enum_count: 1, calculation_rate: 2}
-          ]
-        },
-        %SuperCollider.SynthDef.UGen{
-          class_name: "Out",
-          calculation_rate: 2,
-          special_index: 0,
-          inputs_count: 3,
-          input_specs_list: [
-            %{_enum_count: 0, index: 4, type: :constant},
-            %{_enum_count: 1, index: 6, output_index: 0, type: :ugen},
-            %{_enum_count: 2, index: 6, output_index: 1, type: :ugen}
-          ],
-          outputs_count: 0,
-          output_specs_list: []
-        }
+# Let's assign our SynthDef to `stereo_sine_example` so we can use it later on
+stereo_sine_example = %SynthDef{
+  name: "tutorial-SinOsc-stereo",
+  constant_values_list: [440.0, 0.0, 0.2, 442.0],
+  parameter_values_list: [0.0],
+  parameter_names_list: [%{parameter_index: 0, parameter_name: "out"}],
+  ugen_specs_list: [
+    %UGen{
+      class_name: "Control",
+      calculation_rate: 1,
+      special_index: 0,
+      input_specs_list: [],
+      output_specs_list: [%{calculation_rate: 1}]
+    },
+    %UGen{
+      class_name: "SinOsc",
+      calculation_rate: 2,
+      special_index: 0,
+      input_specs_list: [
+        %{index: 0, type: :constant},
+        %{index: 1, type: :constant}
       ],
-      varient_count: 0,
-      varient_specs_list: []
+      output_specs_list: [%{calculation_rate: 2}]
+    },
+    %UGen{
+      class_name: "BinaryOpUGen",
+      calculation_rate: 2,
+      special_index: 2,
+      input_specs_list: [
+        %{index: 1, output_index: 0, type: :ugen},
+        %{index: 2, type: :constant}
+      ],
+      output_specs_list: [%{calculation_rate: 2}]
+    },
+    %UGen{
+      class_name: "SinOsc",
+      calculation_rate: 2,
+      special_index: 0,
+      input_specs_list: [
+        %{index: 3, type: :constant},
+        %{index: 1, type: :constant}
+      ],
+      output_specs_list: [%{calculation_rate: 2}]
+    },
+    %UGen{
+      class_name: "BinaryOpUGen",
+      calculation_rate: 2,
+      special_index: 2,
+      input_specs_list: [
+        %{index: 3, output_index: 0, type: :ugen},
+        %{index: 2, type: :constant}
+      ],
+      output_specs_list: [%{calculation_rate: 2}]
+    },
+    %UGen{
+      class_name: "Out",
+      calculation_rate: 2,
+      special_index: 0,
+      input_specs_list: [
+        %{index: 0, output_index: 0, type: :ugen},
+        %{index: 2, output_index: 0, type: :ugen},
+        %{index: 4, output_index: 0, type: :ugen}
+      ],
+      output_specs_list: []
     }
-  ]
+  ],
+  varient_specs_list: []
 }
 ```
 
+<!-- livebook:{"output":true} -->
+
+```
+%SuperCollider.SynthDef{
+  name: "tutorial-SinOsc-stereo",
+  constant_values_list: [440.0, 0.0, 0.2, 442.0],
+  parameter_values_list: [0.0],
+  parameter_names_list: [%{parameter_index: 0, parameter_name: "out"}],
+  ugen_specs_list: [
+    %SuperCollider.SynthDef.UGen{
+      class_name: "Control",
+      calculation_rate: 1,
+      special_index: 0,
+      input_specs_list: [],
+      output_specs_list: [%{calculation_rate: 1}]
+    },
+    %SuperCollider.SynthDef.UGen{
+      class_name: "SinOsc",
+      calculation_rate: 2,
+      special_index: 0,
+      input_specs_list: [%{index: 0, type: :constant}, %{index: 1, type: :constant}],
+      output_specs_list: [%{calculation_rate: 2}]
+    },
+    %SuperCollider.SynthDef.UGen{
+      class_name: "BinaryOpUGen",
+      calculation_rate: 2,
+      special_index: 2,
+      input_specs_list: [%{index: 1, output_index: 0, type: :ugen}, %{index: 2, type: :constant}],
+      output_specs_list: [%{calculation_rate: 2}]
+    },
+    %SuperCollider.SynthDef.UGen{
+      class_name: "SinOsc",
+      calculation_rate: 2,
+      special_index: 0,
+      input_specs_list: [%{index: 3, type: :constant}, %{index: 1, type: :constant}],
+      output_specs_list: [%{calculation_rate: 2}]
+    },
+    %SuperCollider.SynthDef.UGen{
+      class_name: "BinaryOpUGen",
+      calculation_rate: 2,
+      special_index: 2,
+      input_specs_list: [%{index: 3, output_index: 0, type: :ugen}, %{index: 2, type: :constant}],
+      output_specs_list: [%{calculation_rate: 2}]
+    },
+    %SuperCollider.SynthDef.UGen{
+      class_name: "Out",
+      calculation_rate: 2,
+      special_index: 0,
+      input_specs_list: [
+        %{index: 0, output_index: 0, type: :ugen},
+        %{index: 2, output_index: 0, type: :ugen},
+        %{index: 4, output_index: 0, type: :ugen}
+      ],
+      output_specs_list: []
+    }
+  ],
+  varient_specs_list: []
+}
+```
+
+**Let's unpack this example a bit more:**
+
+##### SinOsc
+
+This example is a stereo example. It plays two different SinOsc, one on the left audio channel, the one on the right:
+
+* The SinOsc with the frequency argument of 440 Hz will be played out on the first output bus (the left channel).
+* The SinOsc with the frequency argument of 442 Hz will be played out on the second bus (the right channel).
+
+By default, out assumes bus 0 as the first channel, so the two will play on buses 0 and 1 respectively.
+
+So how does this happen?
+
+##### Out UGen
+
+The Out UGen in this example writes out a signal to the server's busses, which in this case is the audio output of the computer.
+
+The Out UGen takes two arguments, the:
+
+* first is the index number of the bus to write out on. These start from 0, which on a stereo setup is usually the left output channel.
+* second is either a UGen or an Array of UGens. If you provide an array (i.e. a multichannel output) then the first channel will be played out on the bus with the indicated index, the second channel on the bus with the indicated index + 1, and so on.
+
+So in this example, because we're patching two SinOsc to Out, the first will play on the left channel (bus 0), and the second will on the right channel (bus 1).
+
+## Sending it to SuperCollider's server
+
+The next step is to send it to SuperCollider's audio server (scsynth or supernova).
+
+To do this, our SynthGen struct first needs to be **encoded into the binary format** which SuperCollider accepts.
+
+Once in binary format, we can **send it across to the server**, ready to play!
+
 ```elixir
-decoded_synthdef.synth_defs |> SynthDef.ScFile.encode() |> SynthDef.ScFile.decode()
+# Encode into binary format
+bin_data = SynthDef.to_binary(stereo_sine_example)
 ```
 
 <!-- livebook:{"output":true} -->
 
 ```
-%SuperCollider.SynthDef.ScFile{
-  type_id: "SCgf",
-  file_version: 2,
-  synth_defs_count: 1,
-  synth_defs: [
-    %SuperCollider.SynthDef{
-      name: "closedhat",
-      constant_count: 6,
-      constant_values_list: [8000.0, 2400.0, 0.5, 1.0, 0.0, 0.1],
-      parameter_count: 0,
-      parameter_values_list: [],
-      parameter_names_count: 0,
-      parameter_names_list: [],
-      ugen_count: 8,
-      ugen_specs_list: [
-        %SuperCollider.SynthDef.UGen{
-          class_name: "WhiteNoise",
-          calculation_rate: 2,
-          special_index: 0,
-          inputs_count: 0,
-          input_specs_list: [],
-          outputs_count: 1,
-          output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-        },
-        %SuperCollider.SynthDef.UGen{
-          class_name: "LPF",
-          calculation_rate: 2,
-          special_index: 0,
-          inputs_count: 2,
-          input_specs_list: [
-            %{_enum_count: 0, index: 0, output_index: 0, type: :ugen},
-            %{_enum_count: 1, index: 0, type: :constant}
-          ],
-          outputs_count: 1,
-          output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-        },
-        %SuperCollider.SynthDef.UGen{
-          class_name: "HPF",
-          calculation_rate: 2,
-          special_index: 0,
-          inputs_count: 2,
-          input_specs_list: [
-            %{_enum_count: 0, index: 1, output_index: 0, type: :ugen},
-            %{_enum_count: 1, index: 1, type: :constant}
-          ],
-          outputs_count: 1,
-          output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-        },
-        %SuperCollider.SynthDef.UGen{
-          class_name: "BinaryOpUGen",
-          calculation_rate: 2,
-          special_index: 2,
-          inputs_count: 2,
-          input_specs_list: [
-            %{_enum_count: 0, index: 2, type: :constant},
-            %{_enum_count: 1, index: 2, output_index: 0, type: :ugen}
-          ],
-          outputs_count: 1,
-          output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-        },
-        %SuperCollider.SynthDef.UGen{
-          class_name: "Line",
-          calculation_rate: 2,
-          special_index: 0,
-          inputs_count: 4,
-          input_specs_list: [
-            %{_enum_count: 0, index: 3, type: :constant},
-            %{_enum_count: 1, index: 4, type: :constant},
-            %{_enum_count: 2, index: 5, type: :constant},
-            %{_enum_count: 3, index: 4, type: :constant}
-          ],
-          outputs_count: 1,
-          output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-        },
-        %SuperCollider.SynthDef.UGen{
-          class_name: "BinaryOpUGen",
-          calculation_rate: 2,
-          special_index: 2,
-          inputs_count: 2,
-          input_specs_list: [
-            %{_enum_count: 0, index: 3, output_index: 0, type: :ugen},
-            %{_enum_count: 1, index: 4, output_index: 0, type: :ugen}
-          ],
-          outputs_count: 1,
-          output_specs_list: [%{_enum_count: 0, calculation_rate: 2}]
-        },
-        %SuperCollider.SynthDef.UGen{
-          class_name: "Pan2",
-          calculation_rate: 2,
-          special_index: 0,
-          inputs_count: 3,
-          input_specs_list: [
-            %{_enum_count: 0, index: 5, output_index: 0, type: :ugen},
-            %{_enum_count: 1, index: 4, type: :constant},
-            %{_enum_count: 2, index: 3, type: :constant}
-          ],
-          outputs_count: 2,
-          output_specs_list: [
-            %{_enum_count: 0, calculation_rate: 2},
-            %{_enum_count: 1, calculation_rate: 2}
-          ]
-        },
-        %SuperCollider.SynthDef.UGen{
-          class_name: "Out",
-          calculation_rate: 2,
-          special_index: 0,
-          inputs_count: 3,
-          input_specs_list: [
-            %{_enum_count: 0, index: 4, type: :constant},
-            %{_enum_count: 1, index: 6, output_index: 0, type: :ugen},
-            %{_enum_count: 2, index: 6, output_index: 1, type: :ugen}
-          ],
-          outputs_count: 0,
-          output_specs_list: []
-        }
-      ],
-      varient_count: 0,
-      varient_specs_list: []
-    }
-  ]
-}
+<<83, 67, 103, 102, 0, 0, 0, 2, 0, 1, 22, 116, 117, 116, 111, 114, 105, 97, 108, 45, 83, 105, 110,
+  79, 115, 99, 45, 115, 116, 101, 114, 101, 111, 0, 0, 0, 4, 67, 220, 0, 0, 0, 0, 0, 0, 62, 76, 204,
+  205, 67, ...>>
 ```
 
-```elixir
-SynthDef.ScFile.decode(bin_data) |> SynthDef.ScFile.encode()
-```
-
-## Send to server
+Now that it has been encoded and assigned to `bin_data`, we can use SuperCollider's `:d_recv` command to send it to scynth or supernova.
 
 ```elixir
 SuperCollider.command(:d_recv, bin_data)
@@ -577,14 +574,28 @@ SuperCollider.command(:d_recv, bin_data)
 
 ```
 
-20:43:00.616 [info] /d_recv
+17:09:17.967 [info] /d_recv
 
 ```
 
-## Play SynthDef on server
+**That's it!**
+
+We've just:
+
+* Defined our SynthDef in Elixir using the `%SynthDef{}` and `%UGen{}` structs
+* Encoded into the binary format that SuperCollider audio servers use
+* Sent it to SuperCollider's audio server (scsynth or supernova).
+
+We're now ready to play our new SynthDef!
+
+## Play SynthDef
+
+Now the "tutorial-SinOsc-stereo" SynthDef is on the audio server, we need to create (instantiate) a synth using the SynthDef by issuing the `:s_new` command.
+
+We'll add this to node 100 as we haven't use it yet.
 
 ```elixir
-SuperCollider.command(:s_new, ["closedhat", 100, 1, 0, []])
+SuperCollider.command(:s_new, ["tutorial-SinOsc-stereo", 100, 1, 0, []])
 ```
 
 <!-- livebook:{"output":true} -->
@@ -593,23 +604,15 @@ SuperCollider.command(:s_new, ["closedhat", 100, 1, 0, []])
 :ok
 ```
 
-<!-- livebook:{"output":true} -->
+You should now hear the two sine waves playing from each channel.
 
-```
+## Stop the synth from playing
 
-20:48:50.985 [error] /s_newduplicate node ID
+You may remember from the concepts section above, that SuperCollider creates a *synth node* on the server which is the container for the playing synth.
 
-```
+When we issues the `:s_new` command we assigned a node ID of `100` to it.
 
-```elixir
-SuperCollider.command(:s_new, ["ambient", 100, 1, 0, []])
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-:ok
-```
+We can use this same ID to 'free' the node, which releases the synth node and stops it from playing. To do that, we send the `:n_free` command (free node) with the node number of `100`.
 
 ```elixir
 SuperCollider.command(:n_free, 100)
@@ -621,7 +624,24 @@ SuperCollider.command(:n_free, 100)
 :ok
 ```
 
-## Quit
+The sound will stop when the node is freed.
+
+To recap, we:
+
+* Started SuperCollider
+* Learned to send commands, like `:version`, `:status`, `:d_recv`, `:s_new` and `:n_free`
+* Learned to access responses for commands like `:version` and `:status` using `SuperCollider.response()`
+* Defined a `%SynthGen{}` called "tutorial-SinOsc-stereo", made up of `%UGens{}` of `SinOsc` and `Out`
+* Encoded it into SuperCollider's binary format
+* Sent it to the audio server (scynth or supernova)
+* Created and played a Synth on the server using the "tutorial-SinOsc-stereo" SynthGen on node 100
+* Stopped it by freeing node 100 using the `:n_free` command!
+
+## Shutting down the SuperCollider audio server
+
+That ends our first tour!
+
+If you'd like to shutdown the audio server process (scsynth or supernova), you can send the `:quit` command.
 
 ```elixir
 SuperCollider.command(:quit)
@@ -632,3 +652,5 @@ SuperCollider.command(:quit)
 ```
 :ok
 ```
+
+

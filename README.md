@@ -69,7 +69,7 @@ SuperCollider.response[:status]
 # ]
 
 # Send a command to play a basic 300Hz sinusoidal sound on node 100
-# This assumes the sine UGen in installed on the server
+# This assumes the sine SynthGen is installed on the server
 SuperCollider.command(:s_new, ["sine", 100, 1, 1, ["freq", 300]])
 
 # Stop the sound by freeing node 100
@@ -95,14 +95,17 @@ The package can be installed by adding `supercollider` to your list of dependenc
 ```elixir
 def deps do
   [
-    {:supercollider, "~> 0.1.3"}
+    {:supercollider, "~> 0.1.4"}
   ]
 end
 ```
 
 ### Using within LiveBook and IEx
 ```elixir
-Mix.install([{:supercollider, "~> 0.1.3"}])
+Mix.install([{:supercollider, "~> 0.1.4"}])
 ```
+
+Also see the interactive tour in LiveBook at [/livebook/supercollider_tour.livemd](https://github.com/haubie/supercollider/blob/main/livebook/supercollider_tour.livemd).
+
 ## Documentation
 The docs can be found at <https://hexdocs.pm/supercollider>.
