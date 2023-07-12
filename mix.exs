@@ -59,7 +59,8 @@ defmodule SuperCollider.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:osc, "~> 0.1.2"},
+      # {:osc, "~> 0.1.2"},
+      {:osc, github: "haubie/osc_ex"},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
   end
@@ -73,7 +74,10 @@ defmodule SuperCollider.MixProject do
         "LICENSE"
       ],
       licenses: ["MIT"],
-      links: %{"GitHub" => "https://github.com/haubie/supercollider"},
+      links: %{
+        "GitHub" => "https://github.com/haubie/supercollider",
+        "SuperCollider (offical)" => "https://supercollider.github.io/"
+        },
       maintainers: ["David Haubenschild"]
     ]
   end

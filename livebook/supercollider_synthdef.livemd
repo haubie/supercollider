@@ -1,0 +1,376 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# SuperCollider - build a SynthDef
+
+```elixir
+Mix.install([
+  # :supercollider
+  {:supercollider, github: "haubie/supercollider"}
+])
+
+alias SuperCollider.SynthDef
+alias SuperCollider.SynthDef.UGen
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+error: undefined variable "deps"
+  /Users/haubie/Library/Caches/mix/installs/elixir-1.15.2-erts-14.0.2/46241acfd94a636eb1e910a7914c19ff/deps/osc/mix.exs:11: Osc.Mixfile.project/0
+
+error: undefined variable "package"
+  /Users/haubie/Library/Caches/mix/installs/elixir-1.15.2-erts-14.0.2/46241acfd94a636eb1e910a7914c19ff/deps/osc/mix.exs:12: Osc.Mixfile.project/0
+
+warning: function deps/0 is unused
+  /Users/haubie/Library/Caches/mix/installs/elixir-1.15.2-erts-14.0.2/46241acfd94a636eb1e910a7914c19ff/deps/osc/mix.exs:19: Osc.Mixfile (module)
+
+warning: function package/0 is unused
+  /Users/haubie/Library/Caches/mix/installs/elixir-1.15.2-erts-14.0.2/46241acfd94a636eb1e910a7914c19ff/deps/osc/mix.exs:25: Osc.Mixfile (module)
+
+Error while loading project :osc at /Users/haubie/Library/Caches/mix/installs/elixir-1.15.2-erts-14.0.2/46241acfd94a636eb1e910a7914c19ff/deps/osc
+```
+
+## Getting started with your own SynthDef
+
+![](https://raw.githubusercontent.com/haubie/supercollider/main/supercollider-elixir-logo.png)
+
+<!-- livebook:{"break_markdown":true} -->
+
+### Goals
+
+**In this LiveBook, we'll define a SynthGen and send it to the server to play.**
+
+If you want an introduction to the SuperCollider Elixir library, see [/livebook/supercollider_tour.livemd](https://github.com/haubie/supercollider/blob/main/livebook/supercollider_tour.livemd) instead.
+
+### What is a SynthDef?
+
+* SynthDefs are a recipe upon which synths are be based.
+* They're made up of UGens, which process or generate sound and control signals.
+* SynthDefs describe how these UGens are patched together to generate sound.
+
+## Creating a SynthDef
+
+**Let's begin by defining a SynthDef.**
+
+In the [introductory tour livebook](https://github.com/haubie/supercollider/blob/main/livebook/supercollider_tour.livemd), we reproduced a simple sine-oscilator SynthGen from the [SuperCollider getting started guide](https://depts.washington.edu/dxscdoc/Help/Tutorials/Getting-Started/10-SynthDefs-and-Synths.html).
+
+The SynthDef writen in sclang looked like this:
+
+```
+(
+    SynthDef.new("tutorial-SinOsc-stereo", { |out|
+        var outArray;
+        outArray = [SinOsc.ar(440, 0, 0.2), SinOsc.ar(442, 0, 0.2)];
+        Out.ar(out, outArray)
+    })
+)
+```
+
+But in using this library, it was verbose (see below) as the SynthGen was represented in its full graph-like data structure, which includes details hidden in the sclang code above.
+
+```elixir
+# Let's alias our modules to make our SynthDef easier to read
+alias SuperCollider.SynthDef
+alias SuperCollider.SynthDef.UGen
+
+# Let's assign our SynthDef to `stereo_sine_example` so we can use it later on
+stereo_sine_example = %SynthDef{
+  name: "tutorial-SinOsc-stereo",
+  constant_values_list: [440.0, 0.0, 0.2, 442.0],
+  parameter_values_list: [0.0],
+  parameter_names_list: [%{parameter_index: 0, parameter_name: "out"}],
+  ugen_specs_list: [
+    %UGen{
+      class_name: "Control",
+      calculation_rate: 1,
+      special_index: 0,
+      input_specs_list: [],
+      output_specs_list: [%{calculation_rate: 1}]
+    },
+    %UGen{
+      class_name: "SinOsc",
+      calculation_rate: 2,
+      special_index: 0,
+      input_specs_list: [
+        %{index: 0, type: :constant},
+        %{index: 1, type: :constant}
+      ],
+      output_specs_list: [%{calculation_rate: 2}]
+    },
+    %UGen{
+      class_name: "BinaryOpUGen",
+      calculation_rate: 2,
+      special_index: 2,
+      input_specs_list: [
+        %{index: 1, output_index: 0, type: :ugen},
+        %{index: 2, type: :constant}
+      ],
+      output_specs_list: [%{calculation_rate: 2}]
+    },
+    %UGen{
+      class_name: "SinOsc",
+      calculation_rate: 2,
+      special_index: 0,
+      input_specs_list: [
+        %{index: 3, type: :constant},
+        %{index: 1, type: :constant}
+      ],
+      output_specs_list: [%{calculation_rate: 2}]
+    },
+    %UGen{
+      class_name: "BinaryOpUGen",
+      calculation_rate: 2,
+      special_index: 2,
+      input_specs_list: [
+        %{index: 3, output_index: 0, type: :ugen},
+        %{index: 2, type: :constant}
+      ],
+      output_specs_list: [%{calculation_rate: 2}]
+    },
+    %UGen{
+      class_name: "Out",
+      calculation_rate: 2,
+      special_index: 0,
+      input_specs_list: [
+        %{index: 0, output_index: 0, type: :ugen},
+        %{index: 2, output_index: 0, type: :ugen},
+        %{index: 4, output_index: 0, type: :ugen}
+      ],
+      output_specs_list: []
+    }
+  ],
+  varient_specs_list: []
+}
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+%SuperCollider.SynthDef{
+  name: "tutorial-SinOsc-stereo",
+  constant_values_list: [440.0, 0.0, 0.2, 442.0],
+  parameter_values_list: [0.0],
+  parameter_names_list: [%{parameter_index: 0, parameter_name: "out"}],
+  ugen_specs_list: [
+    %SuperCollider.SynthDef.UGen{
+      class_name: "Control",
+      calculation_rate: 1,
+      special_index: 0,
+      input_specs_list: [],
+      output_specs_list: [%{calculation_rate: 1}]
+    },
+    %SuperCollider.SynthDef.UGen{
+      class_name: "SinOsc",
+      calculation_rate: 2,
+      special_index: 0,
+      input_specs_list: [%{index: 0, type: :constant}, %{index: 1, type: :constant}],
+      output_specs_list: [%{calculation_rate: 2}]
+    },
+    %SuperCollider.SynthDef.UGen{
+      class_name: "BinaryOpUGen",
+      calculation_rate: 2,
+      special_index: 2,
+      input_specs_list: [%{index: 1, output_index: 0, type: :ugen}, %{index: 2, type: :constant}],
+      output_specs_list: [%{calculation_rate: 2}]
+    },
+    %SuperCollider.SynthDef.UGen{
+      class_name: "SinOsc",
+      calculation_rate: 2,
+      special_index: 0,
+      input_specs_list: [%{index: 3, type: :constant}, %{index: 1, type: :constant}],
+      output_specs_list: [%{calculation_rate: 2}]
+    },
+    %SuperCollider.SynthDef.UGen{
+      class_name: "BinaryOpUGen",
+      calculation_rate: 2,
+      special_index: 2,
+      input_specs_list: [%{index: 3, output_index: 0, type: :ugen}, %{index: 2, type: :constant}],
+      output_specs_list: [%{calculation_rate: 2}]
+    },
+    %SuperCollider.SynthDef.UGen{
+      class_name: "Out",
+      calculation_rate: 2,
+      special_index: 0,
+      input_specs_list: [
+        %{index: 0, output_index: 0, type: :ugen},
+        %{index: 2, output_index: 0, type: :ugen},
+        %{index: 4, output_index: 0, type: :ugen}
+      ],
+      output_specs_list: []
+    }
+  ],
+  varient_specs_list: []
+}
+```
+
+The list of UGens included in this example include:
+
+* [Control](https://doc.sccode.org/Classes/Control.html) which brings signals and floats into the ugenGraph function of a SynthDef
+* [SinOsc](https://doc.sccode.org/Classes/SinOsc.html) which generates a sine wave
+* [BinaryOpUGen](https://doc.sccode.org/Classes/BinaryOpUGen.html) which applies a binary operation (such as arithmatics such as addition, subtraction, multiplication, division, etc.) to the values of an input UGen.
+* [Out](https://doc.sccode.org/Classes/Out.html) which writes (plays out) the audio signal generated by SinOsc to a bus.
+
+In the original sclang version, only `SinOsc` and `Out` UGens were defined.
+
+Yet in the Elixir version two extras appear, `Control` and `Out`. This is because sclang injects these when the SynthGen is encoded into binary to send to the server.
+
+To make it easier to understand what is going on, let's try and visulise how this all patches together below:
+
+<!-- livebook:{"break_markdown":true} -->
+
+![](images/tutorial-SinOsc-stereo.png)
+
+<!-- livebook:{"break_markdown":true} -->
+
+Each UGen has input and output specs.
+
+The input specs are either:
+
+* index of a constant (value) that was used when the SynthGen was created. Note how the list of constants in unique.
+* the index of another UGen. The output of the other UGen will become an input for this one.
+
+The output specs in this example are a calculation rates of either [] (empty list), 1 or 2.
+
+The BinOpUGens are injected as the third parameter if SinOsc is a signal multipler (e.g. for amplification). Because we passed `0.2` we're in effect reducing the signal and the BinOpUGens applies the multiplication operation of 0.2 onto the soundwave coming from the SinOsc, before being directed as an input into the Out Ugen.
+
+The Control UGen provides the index of the bus for the Out Ugen write out to. Because we didn't specify anything, it will start at 0 (buses are indexed by integers beginning with zero).
+
+Even though this seems rather complex for a playing a couple of simple sine waves, this illustrates how SynthDefs are a collection of UGens whos inputs and outputs are patched together to create or modify signals.
+
+## Is there a simpler way?
+
+SynthDef.new...
+
+```elixir
+SynthDef.new(
+  name: "tutorial-SinOsc-stereo",
+  ugen_specs_list: [
+    
+  ]
+
+)
+
+
+
+
+ SynthDef.new("tutorial-SinOsc-stereo", { |out|
+        var outArray;
+        outArray = [SinOsc.ar(440, 0, 0.2), SinOsc.ar(442, 0, 0.2)];
+        Out.ar(out, outArray)
+    })
+
+
+
+
+    # %SuperCollider.SynthDef{
+#   name: nil,
+#   constant_values_list: nil,
+#   parameter_values_list: nil,
+#   parameter_names_list: nil,
+#   ugen_specs_list: nil,
+#   varient_specs_list: nil
+# }
+```
+
+## Sending it to SuperCollider's server
+
+The next step is to send it to SuperCollider's audio server (scsynth or supernova).
+
+To do this, our SynthGen struct first needs to be **encoded into the binary format** which SuperCollider accepts.
+
+Once in binary format, we can **send it across to the server**, ready to play!
+
+```elixir
+# Encode into binary format
+bin_data = SynthDef.to_binary(stereo_sine_example)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+<<83, 67, 103, 102, 0, 0, 0, 2, 0, 1, 22, 116, 117, 116, 111, 114, 105, 97, 108, 45, 83, 105, 110,
+  79, 115, 99, 45, 115, 116, 101, 114, 101, 111, 0, 0, 0, 4, 67, 220, 0, 0, 0, 0, 0, 0, 62, 76, 204,
+  205, 67, ...>>
+```
+
+Now that it has been encoded and assigned to `bin_data`, we can use SuperCollider's `:d_recv` command to send it to scynth or supernova.
+
+```elixir
+SuperCollider.command(:d_recv, bin_data)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+:ok
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+
+19:13:03.418 [info] /d_recv
+
+```
+
+**That's it!**
+
+We've just:
+
+* Defined our SynthDef in Elixir using the `%SynthDef{}` and `%UGen{}` structs
+* Encoded into the binary format that SuperCollider audio servers use
+* Sent it to SuperCollider's audio server (scsynth or supernova).
+
+We're now ready to play our new SynthDef!
+
+## Play SynthDef
+
+Now the "tutorial-SinOsc-stereo" SynthDef is on the audio server, we need to create (instantiate) a synth using the SynthDef by issuing the `:s_new` command.
+
+We'll add this to node 100 as we haven't use it yet.
+
+```elixir
+SuperCollider.command(:s_new, ["tutorial-SinOsc-stereo", 100, 1, 0, []])
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+:ok
+```
+
+You should now hear the two sine waves playing from each channel.
+
+## Stop the synth from playing
+
+You may remember from the concepts section above, that SuperCollider creates a *synth node* on the server which is the container for the playing synth.
+
+When we issues the `:s_new` command we assigned a node ID of `100` to it.
+
+We can use this same ID to 'free' the node, which releases the synth node and stops it from playing. To do that, we send the `:n_free` command (free node) with the node number of `100`.
+
+```elixir
+SuperCollider.command(:n_free, 100)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+:ok
+```
+
+## Shutting down the SuperCollider audio server
+
+That ends our first tour!
+
+If you'd like to shutdown the audio server process (scsynth or supernova), you can send the `:quit` command.
+
+```elixir
+SuperCollider.command(:quit)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+:ok
+```

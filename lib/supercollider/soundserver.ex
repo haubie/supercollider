@@ -1,23 +1,4 @@
 defmodule SuperCollider.SoundServer do
-  use GenServer
-  require Logger
-
-  @server_type [
-    mac: [
-      scsynth: "/Applications/SuperCollider.app/Contents/Resources/scsynth",
-      supernova: "/Applications/SuperCollider.app/Contents/Resources/supernova"
-    ],
-    unix: [
-      scsynth: "/usr/local/scsynth",
-      supernova: "/usr/local/supernova"
-    ],
-    windows: [
-      scsynth: "\\Program Files\\SuperCollider\\sclang.exe",
-      supernova: "\\Program Files\\SuperCollider\\supernova.exe"
-    ]
-  ]
-
-
   @moduledoc """
   GenServer for communicating with scserver or supernova.
 
@@ -65,6 +46,23 @@ defmodule SuperCollider.SoundServer do
   SoundServer.command(pid, :n_free, 600)
   ```
   """
+  use GenServer
+  require Logger
+
+  @server_type [
+    mac: [
+      scsynth: "/Applications/SuperCollider.app/Contents/Resources/scsynth",
+      supernova: "/Applications/SuperCollider.app/Contents/Resources/supernova"
+    ],
+    unix: [
+      scsynth: "/usr/local/scsynth",
+      supernova: "/usr/local/supernova"
+    ],
+    windows: [
+      scsynth: "\\Program Files\\SuperCollider\\sclang.exe",
+      supernova: "\\Program Files\\SuperCollider\\supernova.exe"
+    ]
+  ]
 
   alias SuperCollider.SoundServer
   alias SuperCollider.SoundServer.Command, as: Command
