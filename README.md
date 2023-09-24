@@ -70,7 +70,7 @@ SuperCollider.response[:status]
 
 # Send a command to play a basic 300Hz sinusoidal sound on node 100
 # This assumes the sine SynthGen is installed on the server
-SuperCollider.command(:s_new, ["sine", 100, 1, 1, ["freq", 300]])
+SuperCollider.command(:s_new, ["sine", 100, 1, 0, ["freq", 300]])
 
 # Stop the sound by freeing node 100
 SuperCollider.command(:n_free, 100) 

@@ -71,7 +71,9 @@ defmodule SuperCollider.SoundServer.Response do
 
     # IO.inspect packet, label: "OSC packet recieved"
 
-    case packet.contents |> List.first() do
+    message = if is_list(packet.contents), do: List.first(packet.contents), else: packet.contents
+
+    case message do
       %{address: "/version.reply", arguments: arguments} ->
         version_info = format_version(arguments)
         Logger.notice("Version: #{inspect(version_info)}")

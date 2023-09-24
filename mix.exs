@@ -23,15 +23,17 @@ defmodule SuperCollider.MixProject do
         ],
         groups_for_modules: [
           # SuperCollider,
-          # SuperCollider.SynthDef,
-          # SuperCollider.SynthDef.UGen,
+          SynthDef: [
+            SuperCollider.SynthDef,
+            SuperCollider.SynthDef.UGen,
+            SuperCollider.SynthDef.ScFile,
+          ],
           Server: [
             SuperCollider.SoundServer,
             SuperCollider.SoundServer.Command,
             SuperCollider.SoundServer.Response
           ],
           Helpers: [
-            SuperCollider.SynthDef.ScFile,
             SuperCollider.SynthDef.Encoder,
             SuperCollider.SynthDef.Parser
           ]

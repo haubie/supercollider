@@ -12,19 +12,7 @@ Mix.install([
 <!-- livebook:{"output":true} -->
 
 ```
-error: undefined variable "deps"
-  /Users/haubie/Library/Caches/mix/installs/elixir-1.15.2-erts-14.0.2/46241acfd94a636eb1e910a7914c19ff/deps/osc/mix.exs:11: Osc.Mixfile.project/0
-
-error: undefined variable "package"
-  /Users/haubie/Library/Caches/mix/installs/elixir-1.15.2-erts-14.0.2/46241acfd94a636eb1e910a7914c19ff/deps/osc/mix.exs:12: Osc.Mixfile.project/0
-
-warning: function deps/0 is unused
-  /Users/haubie/Library/Caches/mix/installs/elixir-1.15.2-erts-14.0.2/46241acfd94a636eb1e910a7914c19ff/deps/osc/mix.exs:19: Osc.Mixfile (module)
-
-warning: function package/0 is unused
-  /Users/haubie/Library/Caches/mix/installs/elixir-1.15.2-erts-14.0.2/46241acfd94a636eb1e910a7914c19ff/deps/osc/mix.exs:25: Osc.Mixfile (module)
-
-Error while loading project :osc at /Users/haubie/Library/Caches/mix/installs/elixir-1.15.2-erts-14.0.2/46241acfd94a636eb1e910a7914c19ff/deps/osc
+:ok
 ```
 
 ## Introduction

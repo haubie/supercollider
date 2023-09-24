@@ -21,7 +21,7 @@ defmodule SuperCollider do
   SC.response(:version) # retrieves the version response from the SoundServer's state
 
   # Play a sine wave UGen on node 600, with a frequency of 300
-  SC.command(:s_new, ["sine", 600, 1, 1, ["freq", 300]])
+  SC.command(:s_new, ["sine", 600, 1, 0, ["freq", 300]])
 
   # Stop the sine wave by freeing node 600
   SC.command(:n_free, 600)
@@ -195,7 +195,7 @@ defmodule SuperCollider do
   ## Examples
   ```
   # Send a command to play a basic 300Hz sinusoidal sound on node 100
-  SuperCollider.command(:s_new, ["sine", 100, 1, 1, ["freq", 300]])
+  SuperCollider.command(:s_new, ["sine", 100, 1, 0, ["freq", 300]])
 
   # Stop the sound by freeing node 100
   SuperCollider.command(:n_free, 100)

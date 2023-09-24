@@ -96,7 +96,8 @@ defmodule SuperCollider.SoundServer do
   """
   @impl true
   def init(soundserver \\ %__MODULE__{}) do
-    IO.inspect(soundserver, label: "INIT")
+    # IO.inspect(soundserver, label: "INIT")
+    Logger.info("Initialising sound server with #{inspect(soundserver)}")
     new_state = run(soundserver)
     {:ok, new_state}
   end
@@ -372,7 +373,10 @@ defmodule SuperCollider.SoundServer do
     receive do
       {:udp, _process_port, _ip_addr, _port_num, data} ->
         packet = data |> OSC.decode!()
-        %{address: "/status.reply", arguments: _arguments} = packet.contents |> List.first()
+
+        %{address: "/status.reply", arguments: _arguments}  = if is_list(packet.contents), do:  List.first(packet.contents), else: packet.contents
+
+        # %{address: "/status.reply", arguments: _arguments} = packet.contents |> List.first()
         Logger.info("#{soundserver.type} - already booted ✅")
         true
 

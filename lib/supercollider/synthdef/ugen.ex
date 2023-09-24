@@ -3,11 +3,20 @@ defmodule SuperCollider.SynthDef.UGen do
   UGens represent calculations with signals. They are the basic building blocks of synth definitions on the server, and are used to generate or process both audio and control signals.
 
   They're made up of:
-  * class_name - Examples include `SinOsc`, `Out`, and `Control`.
-  * rate - The rate at which the UGen computes values. There are three rates numbered 0, 1, 2.
-  * special_index - This value is used by some unit generators for a special purpose. For example, UnaryOpUGen and BinaryOpUGen use it to indicate which operator to perform. If not used it should be set to zero.
-  * inputs - The inputs to this unit generator
-  * outputs - The list of outputs of this unit generator. Each element in the list is the `rate` of the output, using the same number as the `rate` field of this struct.
+  * `class_name` - Examples include `SinOsc`, `Out`, and `Control`.
+  * `calculation_rate` - The rate at which the UGen computes values. There are three rates numbered 0, 1, 2.
+  * `special_index` - This value is used by some unit generators for a special purpose. For example, UnaryOpUGen and BinaryOpUGen use it to indicate which operator to perform. If not used it should be set to zero.
+  * `input_specs_list` - The inputs to this unit generator
+  * `output_specs_list` - The list of outputs of this unit generator. Each element in the list is the `rate` of the output, using the same number as the `rate` field of this struct.
+
+  ## Calculation rate
+  The `calculation_rate` takes a value from `0 - 2`, which have the following meanings:
+  0. is an *initialisation rate (ir)* which is a static value set at the time the synth starts up, and subsequently unchangeable
+  1. is a continuous *control rate (kr)* signal (control rate UGens generate one sample value for every sixty-four sample values made by an audio rate ugen so they're less resource intensive)
+  2. is an *audio rate (ar)* signal, which is used for UGens that are part of the audio chain that will be heard (by default, the audio rate is at 44,100 samples per second.)
+
+
+
   """
 
   alias SuperCollider.SynthDef
