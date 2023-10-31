@@ -96,7 +96,6 @@ defmodule SuperCollider.SoundServer do
   """
   @impl true
   def init(soundserver \\ %__MODULE__{}) do
-    # IO.inspect(soundserver, label: "INIT")
     Logger.info("Initialising sound server with #{inspect(soundserver)}")
     new_state = run(soundserver)
     {:ok, new_state}
