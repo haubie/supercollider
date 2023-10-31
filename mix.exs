@@ -61,8 +61,7 @@ defmodule SuperCollider.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:osc, "~> 0.1.2"},
-      {:osc, github: "haubie/osc_ex"},
+      {:oscx, "~> 0.1.0"},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
   end

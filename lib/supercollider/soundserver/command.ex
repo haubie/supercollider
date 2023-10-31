@@ -51,8 +51,8 @@ defmodule SuperCollider.SoundServer.Command do
   Mainly used by `send_osc/3` as a helper function.
   """
   def encode_osc(address, arguments \\ []) do
-    %OSC.Message{address: address, arguments: arguments}
-    |> OSC.encode()
+    %OSCx.Message{address: address, arguments: arguments}
+    |> OSCx.encode()
   end
 
   @doc section: :osc
@@ -64,7 +64,7 @@ defmodule SuperCollider.SoundServer.Command do
   This function makes use of the `encode_osc/3` and `send_to_sc/2` helper functions.
   """
   def send_osc(soundserver, address, arguments \\ []) do
-    {:ok, osc_data} = encode_osc(address, arguments)
+    osc_data = encode_osc(address, arguments)
     send_to_sc(soundserver, osc_data)
     soundserver
   end

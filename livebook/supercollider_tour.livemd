@@ -4,15 +4,8 @@
 
 ```elixir
 Mix.install([
-  # :supercollider
-  {:supercollider, github: "haubie/supercollider"}
+  {:supercollider, "~> 0.1.5"}
 ])
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-:ok
 ```
 
 ## Introduction
@@ -110,25 +103,20 @@ SuperCollider.start()
 <!-- livebook:{"output":true} -->
 
 ```
-INIT: %SuperCollider.SoundServer{
-  ip: '127.0.0.1',
-  hostname: 'localhost',
-  port: 57110,
-  socket: nil,
-  type: :scsynth,
-  responses: %{}
-}
 
-19:12:35.710 [info] scsynth - waiting up to 5 seconds to see if already loaded ⏳
+17:26:45.153 [info] Initialising sound server with %SuperCollider.SoundServer{ip: ~c"127.0.0.1", hostname: ~c"localhost", port: 57110, socket: nil, type: :scsynth, responses: %{}}
 
-19:12:35.727 [info] scsynth - already booted ✅
+17:26:45.157 [info] scsynth - waiting up to 5 seconds to see if already loaded ⏳
 
+17:26:50.163 [info] scsynth - no response, scsynth likely not booted.
+
+17:26:50.163 [info] scsynth - attempting to start 🏁
 ```
 
 <!-- livebook:{"output":true} -->
 
 ```
-#PID<0.216.0>
+#PID<0.215.0>
 ```
 
 By default, it will look for `scsynth`. If you prefer to use `supernova` you can pass the type option instead:
@@ -161,8 +149,7 @@ SuperCollider.command(:version)
 
 ```
 
-19:12:40.959 [info] Version: [{"Program name. May be \"scsynth\" or \"supernova\".", "scsynth"}, {"Major version number. Equivalent to sclang's Main.scVersionMajor.", 3}, {"Minor version number. Equivalent to sclang's Main.scVersionMinor.", 13}, {"Patch version name. Equivalent to the sclang code \".\" ++ Main.scVersionPatch ++ Main.scVersionTweak.", ".0"}, {"Git branch name.", "Version-3.13.0"}, {"First seven hex digits of the commit hash.", "3188503"}]
-
+17:26:55.582 [notice] Version: [{"Program name. May be \"scsynth\" or \"supernova\".", "scsynth"}, {"Major version number. Equivalent to sclang's Main.scVersionMajor.", 3}, {"Minor version number. Equivalent to sclang's Main.scVersionMinor.", 13}, {"Patch version name. Equivalent to the sclang code \".\" ++ Main.scVersionPatch ++ Main.scVersionTweak.", ".0"}, {"Git branch name.", "Version-3.13.0"}, {"First seven hex digits of the commit hash.", "3188503"}]
 ```
 
 ```elixir
@@ -179,8 +166,7 @@ SuperCollider.command(:status)
 
 ```
 
-19:12:41.998 [info] Status: [{"unused", 1}, {"number of unit generators", 0}, {"number of synths", 0}, {"number of groups", 1}, {"number of loaded synth definitions", 2}, {"average percent CPU usage for signal processing", 0.02430117130279541}, {"peak percent CPU usage for signal processing", 0.04414306581020355}, {"nominal sample rate", 44100.0}, {"actual sample rate", 44099.94193761274}]
-
+17:26:57.931 [notice] Status: [{"unused", 1}, {"number of unit generators", 0}, {"number of synths", 0}, {"number of groups", 1}, {"number of loaded synth definitions", 5}, {"average percent CPU usage for signal processing", 0.012340743094682693}, {"peak percent CPU usage for signal processing", 0.032652948051691055}, {"nominal sample rate", 44100.0}, {"actual sample rate", 44100.03896409992}]
 ```
 
 ### Accessing server responses
@@ -207,11 +193,11 @@ SuperCollider.response()
     {"number of unit generators", 0},
     {"number of synths", 0},
     {"number of groups", 1},
-    {"number of loaded synth definitions", 2},
-    {"average percent CPU usage for signal processing", 0.02430117130279541},
-    {"peak percent CPU usage for signal processing", 0.04414306581020355},
+    {"number of loaded synth definitions", 5},
+    {"average percent CPU usage for signal processing", 0.012340743094682693},
+    {"peak percent CPU usage for signal processing", 0.032652948051691055},
     {"nominal sample rate", 44100.0},
-    {"actual sample rate", 44099.94193761274}
+    {"actual sample rate", 44100.03896409992}
   ],
   version: [
     {"Program name. May be \"scsynth\" or \"supernova\".", "scsynth"},
@@ -261,11 +247,11 @@ SuperCollider.response(:status)
   {"number of unit generators", 0},
   {"number of synths", 0},
   {"number of groups", 1},
-  {"number of loaded synth definitions", 2},
-  {"average percent CPU usage for signal processing", 0.02430117130279541},
-  {"peak percent CPU usage for signal processing", 0.04414306581020355},
+  {"number of loaded synth definitions", 5},
+  {"average percent CPU usage for signal processing", 0.012340743094682693},
+  {"peak percent CPU usage for signal processing", 0.032652948051691055},
   {"nominal sample rate", 44100.0},
-  {"actual sample rate", 44099.94193761274}
+  {"actual sample rate", 44100.03896409992}
 ]
 ```
 
@@ -408,7 +394,7 @@ stereo_sine_example = %SynthDef{
       class_name: "BinaryOpUGen",
       calculation_rate: 2,
       special_index: 2,
-      input_specs_list: [%{index: 1, output_index: 0, type: :ugen}, %{index: 2, type: :constant}],
+      input_specs_list: [%{index: 1, type: :ugen, output_index: 0}, %{index: 2, type: :constant}],
       output_specs_list: [%{calculation_rate: 2}]
     },
     %SuperCollider.SynthDef.UGen{
@@ -422,7 +408,7 @@ stereo_sine_example = %SynthDef{
       class_name: "BinaryOpUGen",
       calculation_rate: 2,
       special_index: 2,
-      input_specs_list: [%{index: 3, output_index: 0, type: :ugen}, %{index: 2, type: :constant}],
+      input_specs_list: [%{index: 3, type: :ugen, output_index: 0}, %{index: 2, type: :constant}],
       output_specs_list: [%{calculation_rate: 2}]
     },
     %SuperCollider.SynthDef.UGen{
@@ -430,9 +416,9 @@ stereo_sine_example = %SynthDef{
       calculation_rate: 2,
       special_index: 0,
       input_specs_list: [
-        %{index: 0, output_index: 0, type: :ugen},
-        %{index: 2, output_index: 0, type: :ugen},
-        %{index: 4, output_index: 0, type: :ugen}
+        %{index: 0, type: :ugen, output_index: 0},
+        %{index: 2, type: :ugen, output_index: 0},
+        %{index: 4, type: :ugen, output_index: 0}
       ],
       output_specs_list: []
     }
@@ -502,8 +488,7 @@ SuperCollider.command(:d_recv, bin_data)
 
 ```
 
-19:13:03.418 [info] /d_recv
-
+17:27:17.039 [info] /d_recv
 ```
 
 **That's it!**

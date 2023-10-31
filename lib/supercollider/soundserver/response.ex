@@ -67,11 +67,10 @@ defmodule SuperCollider.SoundServer.Response do
   ```
   """
   def process_osc_message(soundserver, res) do
-    packet = res |> OSC.decode!()
+    message = OSCx.decode(res)
 
-    # IO.inspect packet, label: "OSC packet recieved"
-
-    message = if is_list(packet.contents), do: List.first(packet.contents), else: packet.contents
+    # This may no longer be needed with using OSCx
+    message = if is_list(message), do: List.first(message), else: message
 
     case message do
       %{address: "/version.reply", arguments: arguments} ->
@@ -96,8 +95,8 @@ defmodule SuperCollider.SoundServer.Response do
         Logger.info("Synced #{inspect(arguments)}")
         soundserver
 
-      msg ->
-        IO.inspect(msg, label: "OSC server message")
+      _msg ->
+        # Ignore message
         soundserver
     end
 

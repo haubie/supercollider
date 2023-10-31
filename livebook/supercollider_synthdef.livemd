@@ -1,88 +1,14 @@
-<!-- livebook:{"persist_outputs":true} -->
+<!-- livebook:{"file_entries":[{"name":"tutorial-SinOsc-stereo.png","type":"attachment"}],"persist_outputs":true} -->
 
 # SuperCollider - build a SynthDef
 
 ```elixir
 Mix.install([
-  # :supercollider
-  {:supercollider, github: "haubie/supercollider"}
+  {:supercollider, "~> 0.1.5"}
 ])
 
 alias SuperCollider.SynthDef
 alias SuperCollider.SynthDef.UGen
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-* Getting supercollider (https://github.com/haubie/supercollider.git)
-remote: Enumerating objects: 344, done.        
-remote: Counting objects: 100% (344/344), done.        
-remote: Compressing objects: 100% (219/219), done.        
-remote: Total 344 (delta 135), reused 323 (delta 114), pack-reused 0        
-origin/HEAD set to main
-* Getting osc (https://github.com/haubie/osc_ex.git)
-remote: Enumerating objects: 87, done.        
-remote: Counting objects: 100% (8/8), done.        
-remote: Compressing objects: 100% (7/7), done.        
-remote: Total 87 (delta 1), reused 4 (delta 1), pack-reused 79        
-origin/HEAD set to master
-==> osc
-Compiling 13 files (.ex)
-warning: incompatible types:
-
-    float() !~ integer()
-
-in expression:
-
-    # lib/osc/integer.ex:5
-    <<integer::integer-big-size(32)>>
-
-where "integer" was given the type integer() | float() in:
-
-    # lib/osc/integer.ex:4
-    abs(integer)
-
-where "integer" was given the type integer() in:
-
-    # lib/osc/integer.ex:5
-    <<integer::integer-big-size(32)>>
-
-Conflict found at
-  lib/osc/integer.ex:5: OSC.Encoder.Integer.encode/2
-
-warning: incompatible types:
-
-    float() !~ integer()
-
-in expression:
-
-    # lib/osc/integer.ex:5
-    <<integer::integer-big-size(64)>>
-
-where "integer" was given the type integer() | float() in:
-
-    # lib/osc/integer.ex:4
-    abs(integer)
-
-where "integer" was given the type integer() in:
-
-    # lib/osc/integer.ex:5
-    <<integer::integer-big-size(64)>>
-
-Conflict found at
-  lib/osc/integer.ex:5: OSC.Encoder.Integer.encode/2
-
-Generated osc app
-==> supercollider
-Compiling 9 files (.ex)
-Generated supercollider app
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-SuperCollider.SynthDef.UGen
 ```
 
 ## Getting started with your own SynthDef
@@ -273,7 +199,7 @@ To make it easier to understand what is going on, let's try and visulise how thi
 
 <!-- livebook:{"break_markdown":true} -->
 
-![](images/tutorial-SinOsc-stereo.png)
+![](files/tutorial-SinOsc-stereo.png)
 
 <!-- livebook:{"break_markdown":true} -->
 
@@ -365,7 +291,6 @@ SuperCollider.command(:d_recv, bin_data)
 ```
 
 19:13:03.418 [info] /d_recv
-
 ```
 
 **That's it!**

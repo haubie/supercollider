@@ -372,11 +372,10 @@ defmodule SuperCollider.SoundServer do
 
     receive do
       {:udp, _process_port, _ip_addr, _port_num, data} ->
-        packet = data |> OSC.decode!()
+        message = OSCx.decode(data)
 
-        %{address: "/status.reply", arguments: _arguments}  = if is_list(packet.contents), do:  List.first(packet.contents), else: packet.contents
+        %{address: "/status.reply", arguments: _arguments}  = if is_list(message), do:  List.first(message), else: message
 
-        # %{address: "/status.reply", arguments: _arguments} = packet.contents |> List.first()
         Logger.info("#{soundserver.type} - already booted ✅")
         true
 
