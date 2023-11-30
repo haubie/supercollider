@@ -118,9 +118,40 @@ defmodule SuperCollider.SoundServer do
   # Start SoundServer specifying scynth's port to 57000
   {:ok, pid} = SuperCollider.SoundServer.start_link(port: 57000)
   ```
+
+  ## Adding SoundServer to your application supervision tree
+  If you're wanting to include the `SuperCollider.SoundServer` in the application supervision tree of your own project, you can add:
+
+  `{SuperCollider.SoundServer, name: :soundserver}`
+
+  as a child of your supervisor. The `name:` is optional and is the registered name you'd like for the `SuperCollider.SoundServer` process.
+  
+  For example, if you were writing a Phoenix based web-app musical app, you'd could add it to the `application.ex` file as follows:
+
+  ```
+  ...
+  def start(_type, _args) do
+    children = [
+      MyAppWeb.Telemetry,
+      {DNSCluster, query: Application.get_env(:my_app, :dns_cluster_query) || :ignore},
+      {Phoenix.PubSub, name: MyApp.PubSub},
+      {SuperCollider.SoundServer, name: :soundserver},
+      MyAppWeb.Endpoint,
+    ]
+
+    # See https://hexdocs.pm/elixir/Supervisor.html
+    # for other strategies and supported options
+    opts = [strategy: :one_for_one, name: MyApp.Supervisor]
+    Supervisor.start_link(children, opts)
+  end
+  ...
+  ```
+
+  See the offical Elixir [GenServer: How to supervise](https://hexdocs.pm/elixir/GenServer.html#module-how-to-supervise) documentation for more information.
   """
   def start_link(opts \\ []) do
-    GenServer.start_link(SoundServer, SoundServer.new(opts))
+    name = Keyword.get(opts, :name, nil)
+    GenServer.start_link(SoundServer, SoundServer.new(opts), name: name)
   end
 
   @impl true
