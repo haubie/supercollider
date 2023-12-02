@@ -77,12 +77,14 @@ defmodule SuperCollider.SoundServer do
   - port: the port used to communicate with scserver. This defaults to 57110.
   - socket: the UDP socket used to communicate with scserver, once the connection is open.
   - type: which SuperCollider server is being used, accepts :scsynth (default) or :supernova (multicore)
+  - booted?: this is set to `true` when scynth or supernova has been succesfully connected to when this GenServer started.
   """
   defstruct ip: '127.0.0.1',
             hostname: 'localhost',
             port: 57110,
             socket: nil,
             type: :scsynth,
+            booted?: false,
             responses: %{}
 
   # Genserver callbacks
@@ -247,7 +249,6 @@ defmodule SuperCollider.SoundServer do
   defp is_valid_command?(command_name, args) when is_list(args), do: :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, length(args)+1)
   defp is_valid_command?(command_name, _args), do: :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 2)
 
-
   @doc """
   When sending calls to scserver though UDP, a response message may be returned in the following format:
 
@@ -307,7 +308,7 @@ defmodule SuperCollider.SoundServer do
   def run(soundserver \\ %__MODULE__{}) do
     with {:ok, socket} <- open(),
          :ok <- maybe_boot_scsynth(%{soundserver | socket: socket}) do
-      %__MODULE__{soundserver | socket: socket}
+      %__MODULE__{soundserver | socket: socket, booted?: true}
     else
       _any -> {:error, "Could not be initialised. UDP socket could not be opened."}
     end

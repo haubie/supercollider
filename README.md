@@ -95,14 +95,14 @@ The package can be installed by adding `supercollider` to your list of dependenc
 ```elixir
 def deps do
   [
-    {:supercollider, "~> 0.1.6"}
+    {:supercollider, "~> 0.2.0"}
   ]
 end
 ```
 
 ### Using within LiveBook and IEx
 ```elixir
-Mix.install([{:supercollider, "~> 0.1.6"}])
+Mix.install([{:supercollider, "~> 0.2.0"}])
 ```
 
 #### LiveBook tour

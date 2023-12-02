@@ -1,12 +1,14 @@
 defmodule SuperCollider.MixProject do
   use Mix.Project
 
+  @version "0.2.0"
+
   def project do
     [
       app: :supercollider,
       name: "SuperCollider",
       description: "An Elixir library for interacting with SuperCollider, an audio synthesis and composition platform.",
-      version: "0.1.6",
+      version: @version,
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -33,6 +35,7 @@ defmodule SuperCollider.MixProject do
             SuperCollider.SoundServer.Command,
             SuperCollider.SoundServer.Response
           ],
+          "Server responses": ~r/SuperCollider.Message(.*?)$/,
           Helpers: [
             SuperCollider.SynthDef.Encoder,
             SuperCollider.SynthDef.Parser
@@ -61,7 +64,7 @@ defmodule SuperCollider.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:oscx, "~> 0.1.0"},
+      {:oscx, "~> 0.1.1"},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
   end
