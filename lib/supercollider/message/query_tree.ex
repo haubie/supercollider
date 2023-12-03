@@ -23,6 +23,7 @@ defmodule SuperCollider.Message.QueryTree do
     4. `children:` the nodes in the sub-tree.
     """
     def parse(res_data) do
+        IO.inspect res_data, label: "QUERY TREE"
         res_data
         |> parse_head()
         |> parse_children()
@@ -45,11 +46,11 @@ defmodule SuperCollider.Message.QueryTree do
     # Child is a synth
     defp parse_child([node_id, -1, synthdef_name | rest]=_children, flag, acc, rem_children) do
         {rem_data, child_controls} =
-            if flag do
+            if (flag == 1) do
                 [num_controls | control_data]=rest
                 maybe_parse_child_controls(control_data, flag, [], num_controls) 
             else
-                {rest, nil}
+                {rest, []}
             end
                 
         acc = acc ++ [%{node_id: node_id, type: :synth, num_children: length(child_controls), synth_name: synthdef_name, controls: child_controls}]

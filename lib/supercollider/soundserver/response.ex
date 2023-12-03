@@ -112,11 +112,12 @@ defmodule SuperCollider.SoundServer.Response do
         soundserver
 
       %{address: "/synced", arguments: arguments} ->
-        Logger.info("Synced: #{inspect(arguments)}")
+        notification = Message.Sync.parse(arguments)
+        Logger.info("Synced: #{inspect(notification)}")
         soundserver
    
       %{address: <<"/n_", _rest::binary>>=address, arguments: arguments} ->
-        notification = Message.Node.parse(arguments)
+        notification = Message.Node.parse(address, arguments)
         Logger.info("Node #{address}: #{inspect(notification)}")
         soundserver
 

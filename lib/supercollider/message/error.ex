@@ -1,7 +1,6 @@
 defmodule SuperCollider.Message.Error do
     @moduledoc """
     A error message from the server.
-
     """
 
     defstruct [
