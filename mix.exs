@@ -33,7 +33,8 @@ defmodule SuperCollider.MixProject do
           Server: [
             SuperCollider.SoundServer,
             SuperCollider.SoundServer.Command,
-            SuperCollider.SoundServer.Response
+            SuperCollider.SoundServer.Response,
+            SuperCollider.SoundServer.Allocator
           ],
           "Server responses": ~r/SuperCollider.Message(.*?)$/,
           Helpers: [

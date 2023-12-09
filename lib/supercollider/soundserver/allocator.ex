@@ -6,11 +6,10 @@ defmodule SuperCollider.SoundServer.Allocator do
     Additionally, this library supports 'named' IDs, that is, using Elixir strings or atoms to represent a node id.
     This module translates the names (string or atom) to a node number on the SuperCollider server, and vice-versa.
 
-    # Node ID allocation
+    # Node ID allocation method
+    This module is largely a port of NodeIDAllocator from SuperCollider. The Python [Supriya library](https://github.com/josiah-wolf-oberholtzer/supriya/) was also used as a reference.
 
-    NodeIDAllocator uses a fixed binary prefix of (2 ** 26) * clientID:
-
-    # References
+    # More information
     The following served as references for the design of this module: 
     - [Multi client setups](https://doc.sccode.org/Guides/MultiClient_Setups.html)
     - [ReadableNodeIDAllocator](https://doc.sccode.org/Classes/ReadableNodeIDAllocator.html)
@@ -19,21 +18,45 @@ defmodule SuperCollider.SoundServer.Allocator do
     """
 
     use Agent
+    alias SuperCollider.SoundServer.Allocator
 
-    @num_ids 0x04000000 
+    @id_offset (2 ** 26) 
 
     defstruct [
         initial_node_id: 1000,
         client_id: 0,
+        mask: Bitwise.bsl(0, 26),
+        temp: 1000,
         next_permanent_id: 1,
         freed_permanent_ids: MapSet.new()
     ]
 
     @doc """
+    Resets the allocator to the defaults.
+
+    Values that were initially provided to `start_link/1` or `new/1` will also need to provided as options.
+    """
+    def reset(allocator, opts \\ []) do
+        Agent.update(allocator, fn _ -> new(opts) end)
+    end
+
+    @doc """
     Creates a new Allocator struct and assigns any values passed to it as options.
     """
     def new(opts \\ []) do
-        struct(__MODULE__, opts)
+        client_id = Keyword.get(opts, :client_id, 0)
+        initial_node_id = Keyword.get(opts, :initial_node_id, 1000)
+
+        if (client_id > 31), do: raise "Node ID allocator error: client_id cannot be > 31. Given a client_id of #{inspect(client_id)}."
+
+        %__MODULE__{
+            initial_node_id: initial_node_id,
+            client_id: client_id,
+            mask: mask(client_id),
+            temp: initial_node_id,
+            next_permanent_id: 1,
+            freed_permanent_ids: MapSet.new()
+        }
     end
 
     @doc """
@@ -45,92 +68,74 @@ defmodule SuperCollider.SoundServer.Allocator do
         Agent.start_link(fn -> new(opts) end)
     end
 
+    @doc """
+    Returns the state of the allocator agent.
+    """
+    def state(allocator), do: Agent.get(allocator, & &1)
 
     @doc """
-    
+    Returns the next node
     """
-    def next_node_id() do
+    def next_node_id(allocator) do
+        allocator
     end
 
+    @doc """
+    Allocates a temporary node id.
+    """
+    def allocate_node(allocator, count \\ 1) do
+        state = Allocator.state(allocator)
 
-    # @doc """
-    # Gets a value from the `bucket` by `key`.
-    # """
-    # def get(bucket, key) do
-    #     Agent.get(bucket, &Map.get(&1, key))
-    # end
+        x = state.temp 
+        temp = x + count
 
-    # @doc """
-    # Puts the `value` for the given `key` in the `bucket`.
-    # """
-    # def put(bucket, key, value) do
-    #     Agent.update(bucket, &Map.put(&1, key, value))
-    # end
+        temp = if (@id_offset-1 < temp),
+            do: wrap(temp, state.initial_node_id),
+            else: temp 
+        
+        Agent.update(allocator, &Map.put(&1, :temp, temp))
 
+        Bitwise.bor(x, state.mask)
+    end
 
+    @doc """
+    Allocates a permanent node id.
+    """
+    def allocate_permanent_node(allocator) do
+        state = Allocator.state(allocator)
+        x =
+            if MapSet.size(state.freed_permanent_ids) != 0 do
+                # Get the lowest number from the freed_permanent_ids and remove it from the state
+                x = Enum.min(state.freed_permanent_ids)
+                Agent.update(allocator, &Map.put(&1, :freed_permanent_ids, MapSet.delete(state.freed_permanent_ids, x)))
+                x
+            else
+                x = state.next_permanent_id
+                Agent.update(allocator, &Map.put(&1, :next_permanent_id, min(x+1, state.initial_node_id-1)))
+                x
+            end
 
+        Bitwise.bor(x, state.mask)
+    end
 
+    @doc """
+    Frees a permanent node id.
 
-    # def allocate_permanent_node_id(allocator) do
-    #     if MapSet.size(allocator.freed_permanent_ids) == 0 do
-    #         x = Enum.min(allocator.freed_permanent_ids)
-    #         MapSet.delete(allocator.freed_permanent_ids, x)
-    #     else
+    The freed ids are reallocated when the allocate_permanent_node/1 is called.
+    """
+    def free_permanent_node(allocator, node_id) do
+        state = Allocator.state(allocator)
+        node_id = Bitwise.band(node_id, @id_offset-1)
 
-    #     end
+        if (node_id < state.initial_node_id),
+            do: Agent.update(allocator, &Map.put(&1, :freed_permanent_ids, MapSet.put(state.freed_permanent_ids, node_id)))
+    end
 
-    # end
+    ## Helper functions
 
-    # def allocate_permanent_node_id(self) -> int:
-    #     with self._lock:
-    #         if self._freed_permanent_ids:
-    #             x = min(self._freed_permanent_ids)
-    #             self._freed_permanent_ids.remove(x)
-    #         else:
-    #             x = self._next_permanent_id
-    #             self._next_permanent_id = min(x + 1, self._initial_node_id - 1)
-    #         x = x | self._mask
-    #         return x
-
-
-
-
-
-
-
-    # def allocate_node_id(self, count: int = 1) -> int:
-    #     with self._lock:
-    #         x = self._temp
-    #         temp = x + count
-    #         if 0x03FFFFFF < temp:
-    #             temp = (temp % 0x03FFFFFF) + self._initial_node_id
-    #         self._temp = temp
-    #         x = x | self._mask
-    #         return x
-
-    # def allocate_permanent_node_id(self) -> int:
-    #     with self._lock:
-    #         if self._freed_permanent_ids:
-    #             x = min(self._freed_permanent_ids)
-    #             self._freed_permanent_ids.remove(x)
-    #         else:
-    #             x = self._next_permanent_id
-    #             self._next_permanent_id = min(x + 1, self._initial_node_id - 1)
-    #         x = x | self._mask
-    #         return x
-
-    # def free(self, node_id: int) -> None:
-    #     if node_id < self._initial_node_id:
-    #         self.free_permanent_node_id(node_id)
-
-    # def free_permanent_node_id(self, node_id: int) -> None:
-    #     with self._lock:
-    #         node_id = node_id & 0x03FFFFFF
-    #         if node_id < self._initial_node_id:
-    #             self._freed_permanent_ids.add(node_id)
-
-
-
-
+    defp id_offset(client_id), do: @id_offset * client_id
+    defp default_group(client_id), do: id_offset(client_id) + 1
+    defp mask(client_id), do: Bitwise.bsl(client_id, 26)
+    defp wrap(value_1, value_2), do: Integer.mod(value_1, @id_offset-1) + value_2
 
 end
