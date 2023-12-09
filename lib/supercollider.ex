@@ -2,19 +2,25 @@ defmodule SuperCollider do
   @moduledoc """
   This is the main `SuperCollider` module.
 
+  **This high-level module was designed to quickly get going in a Livebook environment.**
+
   With this module, you can:
   * start a `SuperCollider.SoundServer`, which is a GenServer used to communicate with scynth and recieve messages from it.
   * issue commands
   * access SuperColliders state.
 
-  This module aims to minimise the need to pass a pid around representing the active `SoundServer` by storing it's PID as a persisitient term under `:supercollider_soundserver`. Calling `SuperCollider.start()` will automatically store the pid of the SoundServer as a persistient term.
+  This module aims to minimise the need to pass a pid around representing the active `SoundServer` by storing it's PID as a persisitient term under `:supercollider_soundserver`. Calling `SuperCollider.start_link()` will automatically store the pid of the SoundServer as a persistient term.
+  
+  > #### Tip {: .tip}
+  >
+  > If instead you're looking to start a `SoundServer` as part of you application's supervision tree, see the `SuperCollider.SoundServer` documentation.
 
   ## Example
   ```
   alias SuperCollider, as :SC
 
   # Start the `SuperCollider.SoundServer` GenServer
-  SC.start() # this will return the PID of the SoundServer, however, you don't have to assign this to a variable as its stored as a persistient term used by the other functions in this module.
+  SC.start_link() # this will return the PID of the SoundServer, however, you don't have to assign this to a variable as its stored as a persistient term used by the other functions in this module.
 
   # Issue the verion command and get the response from SoundServer's state
   SC.command(:version) # send the version commant to SuperCollider
@@ -29,6 +35,7 @@ defmodule SuperCollider do
 
   ## LiveBook tour
   You can explore this library further in the [LiveBook demo](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2Fhaubie%2Fsupercollider%2Fblob%2Fmain%2Flivebook%2Fsupercollider_tour.livemd).
+  
   [![Run in Livebook](https://livebook.dev/badge/v1/blue.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2Fhaubie%2Fsupercollider%2Fblob%2Fmain%2Flivebook%2Fsupercollider_tour.livemd)
   """
 
@@ -43,23 +50,23 @@ defmodule SuperCollider do
 
   ## Options
   Additionally, this function can take options:
-  - ip: the IP address of scserver. This defaults to '127.0.0.1'
-  - hostname: the hostname of the server. This defaults to 'localhost'.
-  - port: the port used to communicate with scserver. This defaults to 57110.
-  - socket: the UDP socket used to communicate with scserver, once the connection is open.
-  - type: the server type being used, accepts :scsynth (default) or :supernova (multicore)
-
+  - `ip:` the IP address of scserver. This defaults to '127.0.0.1'
+  - `hostname:` the hostname of the server. This defaults to 'localhost'.
+  - `port:` the port used to communicate with scserver. This defaults to 57110.
+  - `socket:` the UDP socket used to communicate with scserver, once the connection is open.
+  - `type:` the server type being used, accepts :scsynth (default) or :supernova (multicore)
+  
   Note if the hostname is set to `nil` it will try the IP address at `ip`.
 
   ## Examples
   Start SuperCollider with defaults
   ```
-  SuperCollider.start()
+  SuperCollider.start_link()
   ```
 
   Start SuperCollider with a supernova server
   ```
-  SuperCollider.start(type: :supernova)
+  SuperCollider.start_link(type: :supernova)
   ```
 
   This function starts the `SuperCollider.SoundServer` GenServer which will check if SuperCollider has booted on your system. If not, it will currently attempt to start scynth or supernova at the following locations:
@@ -68,7 +75,7 @@ defmodule SuperCollider do
   - Linux: /usr/local/
   - Windows: \\Program Files\\SuperCollider\\
   """
-  def start(opts \\ []) do
+  def start_link(opts \\ []) do
     {:ok, pid} = GenServer.start_link(SoundServer, SoundServer.new(opts))
     :persistent_term.put(:supercollider_soundserver, pid)
     pid
@@ -118,9 +125,9 @@ defmodule SuperCollider do
   Get's a specific OSC response stored in the state of the server, by it's key. If no response is available for the specific key, `nil` is returned.
 
   The following are currently stored responses:
-  * :version - the version information from a `SuperCollider.command(:version)` call
-  * :status - the last status message stored from a `SuperCollider.command(:status)` call
-  * :fail - the last fail message from a `SuperCollider.command(...)` call
+  * `:version` - the version information from a `SuperCollider.command(:version)` call
+  * `:status` - the last status message stored from a `SuperCollider.command(:status)` call
+  * `:fail` - the last fail message from a `SuperCollider.command(...)` call
 
   ## Example
   For example, if a version request was made:
@@ -138,15 +145,14 @@ defmodule SuperCollider do
   This would return the version response in the following format:
 
   ```
-  [
-    {"Program name. May be \"scsynth\" or \"supernova\".", "scsynth"},
-    {"Major version number. Equivalent to sclang's Main.scVersionMajor.", 3},
-    {"Minor version number. Equivalent to sclang's Main.scVersionMinor.", 13},
-    {"Patch version name. Equivalent to the sclang code \".\" ++ Main.scVersionPatch ++ Main.scVersionTweak.",
-     ".0"},
-    {"Git branch name.", "Version-3.13.0"},
-    {"First seven hex digits of the commit hash.", "3188503"}
-  ]
+  %SuperCollider.Message.Version{
+    name: "scsynth",
+    major_version: 3,
+    minor_version: 13,
+    patch_name: ".0",
+    git_branch: "Version-3.13.0",
+    commit_hash_head: "3188503"
+  }
   ```
   """
   def response(key) do

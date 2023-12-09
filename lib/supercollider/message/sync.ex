@@ -16,7 +16,7 @@ defmodule SuperCollider.Message.Sync do
 
     @doc """
     Parses OSC arguments in the following order:
-    1. `id:` the name of the command,
+    1. `id:` the ID argument provided when calling the `:sync` command.
 
     To the `:timestamp` key, the `DateTime.utc_now/0` the message was received is added.
     """

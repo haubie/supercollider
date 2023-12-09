@@ -88,7 +88,7 @@ If you'd like to get familiar with the UGens pre-bundled with SuperCollider, see
 
 ## Starting the Elixir SuperCollider library
 
-The simplest way to get going with this library is to call the `SuperCollider.start/1` function.
+The simplest way to get going with this library is to call the `SuperCollider.start_link/1` function.
 
 This does a number of things:
 
@@ -97,32 +97,33 @@ This does a number of things:
 * **Stores** the PID of the `SuperCollider.SoundServer` in a globally available persistient term, so you don't have to remember to pass it around when using the top-level functions under the `SuperCollider` module.
 
 ```elixir
-SuperCollider.start()
+SuperCollider.start_link()
 ```
 
 <!-- livebook:{"output":true} -->
 
 ```
 
-17:26:45.153 [info] Initialising sound server with %SuperCollider.SoundServer{ip: ~c"127.0.0.1", hostname: ~c"localhost", port: 57110, socket: nil, type: :scsynth, responses: %{}}
+21:18:10.202 [info] Initialising sound server with %SuperCollider.SoundServer{ip: ~c"127.0.0.1", hostname: ~c"localhost", port: 57110, socket: nil, type: :scsynth, booted?: false, client_id: 0, responses: %{}}
 
-17:26:45.157 [info] scsynth - waiting up to 5 seconds to see if already loaded ⏳
+21:18:10.202 [info] scsynth - waiting up to 5 seconds to see if already loaded ⏳
 
-17:26:50.163 [info] scsynth - no response, scsynth likely not booted.
+21:18:15.203 [info] scsynth - no response, scsynth likely not booted.
 
-17:26:50.163 [info] scsynth - attempting to start 🏁
+21:18:15.204 [info] scsynth - attempting to start 🏁
+
 ```
 
 <!-- livebook:{"output":true} -->
 
 ```
-#PID<0.215.0>
+#PID<0.415.0>
 ```
 
 By default, it will look for `scsynth`. If you prefer to use `supernova` you can pass the type option instead:
 
 ```
-SuperCollider.start(type: :supernova)
+SuperCollider.start_link(type: :supernova)
 ```
 
 ## Basic server communication: get server version and status
@@ -149,7 +150,8 @@ SuperCollider.command(:version)
 
 ```
 
-17:26:55.582 [notice] Version: [{"Program name. May be \"scsynth\" or \"supernova\".", "scsynth"}, {"Major version number. Equivalent to sclang's Main.scVersionMajor.", 3}, {"Minor version number. Equivalent to sclang's Main.scVersionMinor.", 13}, {"Patch version name. Equivalent to the sclang code \".\" ++ Main.scVersionPatch ++ Main.scVersionTweak.", ".0"}, {"Git branch name.", "Version-3.13.0"}, {"First seven hex digits of the commit hash.", "3188503"}]
+21:19:02.712 [notice] Version: %SuperCollider.Message.Version{name: "scsynth", major_version: 3, minor_version: 13, patch_name: ".0", git_branch: "Version-3.13.0", commit_hash_head: "3188503"}
+
 ```
 
 ```elixir
@@ -166,7 +168,8 @@ SuperCollider.command(:status)
 
 ```
 
-17:26:57.931 [notice] Status: [{"unused", 1}, {"number of unit generators", 0}, {"number of synths", 0}, {"number of groups", 1}, {"number of loaded synth definitions", 5}, {"average percent CPU usage for signal processing", 0.012340743094682693}, {"peak percent CPU usage for signal processing", 0.032652948051691055}, {"nominal sample rate", 44100.0}, {"actual sample rate", 44100.03896409992}]
+21:19:08.379 [notice] Status: %SuperCollider.Message.Status{unused: 1, num_ugens: 0, num_synths: 0, num_groups: 1, num_synthdefs_loaded: 5, avg_cpu: 0.02578400820493698, peak_cpu: 0.0825410708785057, nominal_sample_rate: 44100.0, actual_sample_rate: 44099.95381624185}
+
 ```
 
 ### Accessing server responses
@@ -188,26 +191,25 @@ SuperCollider.response()
 
 ```
 %{
-  status: [
-    {"unused", 1},
-    {"number of unit generators", 0},
-    {"number of synths", 0},
-    {"number of groups", 1},
-    {"number of loaded synth definitions", 5},
-    {"average percent CPU usage for signal processing", 0.012340743094682693},
-    {"peak percent CPU usage for signal processing", 0.032652948051691055},
-    {"nominal sample rate", 44100.0},
-    {"actual sample rate", 44100.03896409992}
-  ],
-  version: [
-    {"Program name. May be \"scsynth\" or \"supernova\".", "scsynth"},
-    {"Major version number. Equivalent to sclang's Main.scVersionMajor.", 3},
-    {"Minor version number. Equivalent to sclang's Main.scVersionMinor.", 13},
-    {"Patch version name. Equivalent to the sclang code \".\" ++ Main.scVersionPatch ++ Main.scVersionTweak.",
-     ".0"},
-    {"Git branch name.", "Version-3.13.0"},
-    {"First seven hex digits of the commit hash.", "3188503"}
-  ]
+  status: %SuperCollider.Message.Status{
+    unused: 1,
+    num_ugens: 0,
+    num_synths: 0,
+    num_groups: 1,
+    num_synthdefs_loaded: 5,
+    avg_cpu: 0.02578400820493698,
+    peak_cpu: 0.0825410708785057,
+    nominal_sample_rate: 44100.0,
+    actual_sample_rate: 44099.95381624185
+  },
+  version: %SuperCollider.Message.Version{
+    name: "scsynth",
+    major_version: 3,
+    minor_version: 13,
+    patch_name: ".0",
+    git_branch: "Version-3.13.0",
+    commit_hash_head: "3188503"
+  }
 }
 ```
 
@@ -223,15 +225,14 @@ SuperCollider.response(:version)
 <!-- livebook:{"output":true} -->
 
 ```
-[
-  {"Program name. May be \"scsynth\" or \"supernova\".", "scsynth"},
-  {"Major version number. Equivalent to sclang's Main.scVersionMajor.", 3},
-  {"Minor version number. Equivalent to sclang's Main.scVersionMinor.", 13},
-  {"Patch version name. Equivalent to the sclang code \".\" ++ Main.scVersionPatch ++ Main.scVersionTweak.",
-   ".0"},
-  {"Git branch name.", "Version-3.13.0"},
-  {"First seven hex digits of the commit hash.", "3188503"}
-]
+%SuperCollider.Message.Version{
+  name: "scsynth",
+  major_version: 3,
+  minor_version: 13,
+  patch_name: ".0",
+  git_branch: "Version-3.13.0",
+  commit_hash_head: "3188503"
+}
 ```
 
 ```elixir
@@ -242,17 +243,17 @@ SuperCollider.response(:status)
 <!-- livebook:{"output":true} -->
 
 ```
-[
-  {"unused", 1},
-  {"number of unit generators", 0},
-  {"number of synths", 0},
-  {"number of groups", 1},
-  {"number of loaded synth definitions", 5},
-  {"average percent CPU usage for signal processing", 0.012340743094682693},
-  {"peak percent CPU usage for signal processing", 0.032652948051691055},
-  {"nominal sample rate", 44100.0},
-  {"actual sample rate", 44100.03896409992}
-]
+%SuperCollider.Message.Status{
+  unused: 1,
+  num_ugens: 0,
+  num_synths: 0,
+  num_groups: 1,
+  num_synthdefs_loaded: 5,
+  avg_cpu: 0.02578400820493698,
+  peak_cpu: 0.0825410708785057,
+  nominal_sample_rate: 44100.0,
+  actual_sample_rate: 44099.95381624185
+}
 ```
 
 ### Summary
@@ -488,7 +489,8 @@ SuperCollider.command(:d_recv, bin_data)
 
 ```
 
-17:27:17.039 [info] /d_recv
+21:19:40.143 [info] Done: %SuperCollider.Message.Done{command: "/d_recv", other: nil}
+
 ```
 
 **That's it!**

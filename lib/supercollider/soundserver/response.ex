@@ -11,45 +11,60 @@ defmodule SuperCollider.SoundServer.Response do
   * `/fail` the server will send this OSC response when a command fails, such as freeing a node that doesn't exist `SuperCollider.command(:n_free, 800)`
   * `/late` a command was received too late
   * `/done` an asynchronous message has completed
+  * `/done /notify` a notify confirmation message
   * `/synced`
 
   Server responses are logged using Elixir's logger.
 
-  Version, status and fail messages are added to the SoundServer's state under the `response` key, e.g.:
+  The OSC messages returned are converted to `SuperCollider.Message` structs:
+  - `SuperCollider.Message.Error`: A error message from the server.
+  - `SuperCollider.Message.Node`: A node message from the server.
+  - `SuperCollider.Message.Notify`: A notify confirmation message.
+  - `SuperCollider.Message.Done`: An asynchronous message has completed.
+  - `SuperCollider.Message.QueryTree`: A representation of a group's node subtree.
+  - `SuperCollider.Message.Sync`:  A sync message from the server.
+  - `SuperCollider.Message.Late`:  A command was received too late.
+  - `SuperCollider.Message.Trigger`: A trigger message.
+  - `SuperCollider.Message.Version`: A version message.
+  - `SuperCollider.Message.Status`: A status message.
+
+  Version, status and fail messages are added to the SoundServer's state under the `responses:` key, e.g.:
   ```
   %SuperCollider.SoundServer{
-    ip: '127.0.0.1',
-    hostname: 'localhost',
+    ip: ~c"127.0.0.1",
+    hostname: ~c"localhost",
     port: 57110,
-    socket: #Port<0.5>,
+    socket: #Port<0.6>,
+    type: :scsynth,
+    booted?: true,
+    client_id: 0,
     responses: %{
-      fail: ["/n_free", "Node 100 not found"],
-      status: [
-        {"Unused", 1},
-        {"Number of unit generators", 0},
-        {"Number of synths", 0},
-        {"Number of groups", 2},
-        {"Number of loaded synth definitions", 109},
-        {"Average percent CPU usage for signal processing", 0.022701745852828026},
-        {"Peak percent CPU usage for signal processing", 0.08792437613010406},
-        {"Nominal sample rate", 44100.0},
-        {"Actual sample rate", 44100.008983920634}
-      ],
-      version: [
-        {"Program name", "scsynth"},
-        {"Major version number", 3},
-        {"Minor version number", 13},
-        {"Patch version name", ".0"},
-        {"Git branch name", "Version-3.13.0"},
-        {"First seven hex digits of the commit hash", "3188503"}
-      ]
+      status: %SuperCollider.Message.Status{
+        unused: 1,
+        num_ugens: 4,
+        num_synths: 1,
+        num_groups: 1,
+        num_synthdefs_loaded: 5,
+        avg_cpu: 0.02616635337471962,
+        peak_cpu: 0.10551269352436066,
+        nominal_sample_rate: 44100.0,
+        actual_sample_rate: 44100.01409481425
+      },
+      version: %SuperCollider.Message.Version{
+        name: "scsynth",
+        major_version: 3,
+        minor_version: 13,
+        patch_name: ".0",
+        git_branch: "Version-3.13.0",
+        commit_hash_head: "3188503"
+      }
     }
   }
   ```
   For convenience, you can quickly access these reponse messages by calling `SuperCollider.response()` or `SuperCollider.response(key)` where key is `:version`, `:status` or `:fail`.
   """
 
-  alias SuperCollider.Message
+  alias SuperCollider.{SoundServer, Message}
   require Logger
 
   @doc """
@@ -59,17 +74,7 @@ defmodule SuperCollider.SoundServer.Response do
 
   Accepts a %SoundServer{} as the first parameter and the OSC response message as the second.
 
-  For Version and Status response messages, additional text labels are added to the values returned in the form of a tuple: `{"label", value}`. For example, an exert of the enrished version response is below:
-  ```
-  [
-      {"Program name", "scsynth"},
-      {"Major version number", 3},
-      {"Minor version number", 13},
-      {"Patch version name", ".0"},
-      {"Git branch name", "Version-3.13.0"},
-      {"First seven hex digits of the commit hash", "3188503"}
-  ]
-  ```
+  The OSC messages received from scynth or supernova are converted into one of the `SuperCollider.Message` structs. See the `SuperCollider.Message` documentation for the complete list.
   """
   def process_osc_message(soundserver, res) do
     message = OSCx.decode(res)
@@ -79,12 +84,12 @@ defmodule SuperCollider.SoundServer.Response do
 
     case message do
       %{address: "/version.reply", arguments: arguments} ->
-        version_info = format_version(arguments)
+        version_info = Message.Version.parse(arguments)
         Logger.notice("Version: #{inspect(version_info)}")
         put_response(soundserver, :version, version_info)
 
       %{address: "/status.reply", arguments: arguments} ->
-        status_info = format_status(arguments)
+        status_info = Message.Status.parse(arguments)
         Logger.notice("Status: #{inspect(status_info)}")
         put_response(soundserver, :status, status_info)
     
@@ -99,16 +104,18 @@ defmodule SuperCollider.SoundServer.Response do
         put_response(soundserver, :fail, error)
 
       %{address: "/late", arguments: arguments} ->
-        Logger.warning("Late: #{inspect(arguments)}")
+        notification = Message.Late.parse(arguments)
+        Logger.warning("Late: #{inspect(notification)}")
         soundserver
 
       %{address: "/done", arguments: ["/notify" | rest_args]=_arguments} ->
         notification = Message.Notify.parse(rest_args)
         Logger.info("Notify: #{inspect(notification)}")
-        soundserver
+        %SoundServer{soundserver | client_id: notification.client_id}
 
       %{address: "/done", arguments: arguments} ->
-        Logger.info("Done: #{inspect(arguments)}")
+        notification = Message.Done.parse(arguments)
+        Logger.info("Done: #{inspect(notification)}")
         soundserver
 
       %{address: "/synced", arguments: arguments} ->
@@ -122,11 +129,13 @@ defmodule SuperCollider.SoundServer.Response do
         soundserver
 
       %{address: "/tr", arguments: arguments} ->
-        Logger.info("Trigger: #{inspect(arguments)}")
+        trigger = Message.Trigger.parse(arguments)
+        Logger.info("Trigger: #{inspect(trigger)}")
         soundserver    
 
-      _msg ->
+      msg ->
         # Ignore message
+        Logger.info("Non matched message: #{inspect(msg)}")
         soundserver
     end
 
@@ -135,35 +144,6 @@ defmodule SuperCollider.SoundServer.Response do
   # Helper functions for formatting responses and adding response data to the state (if applicable)
   defp put_response(soundserver, key, value) do
     %{soundserver | responses: Map.put(soundserver.responses, key, value)}
-  end
-
-  defp format_status(res_data) do
-    response_labels = [
-      "Unused",
-      "Number of unit generators",
-      "Number of synths",
-      "Number of groups",
-      "Number of loaded synth definitions",
-      "Average percent CPU usage for signal processing",
-      "Peak percent CPU usage for signal processing",
-      "Nominal sample rate",
-      "Actual sample rate"
-    ]
-
-    Enum.zip(response_labels, res_data)
-  end
-
-  defp format_version(res_data) do
-    response_labels = [
-      "Program name",
-      "Major version number",
-      "Minor version number",
-      "Patch version name",
-      "Git branch name",
-      "First seven hex digits of the commit hash"
-    ]
-
-    Enum.zip(response_labels, res_data)
   end
 
 end

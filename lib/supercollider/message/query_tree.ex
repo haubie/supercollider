@@ -3,8 +3,8 @@ defmodule SuperCollider.Message.QueryTree do
     A representation of a group's node subtree.
 
     The `children:` key holds a list of nodes which are either:
-    - `%{type: :group, ...}` which represents a group node
-    - `%{type: :synth, ...}` which represents a synth node.
+    - `%{node_type: :group, ...}` which represents a group node
+    - `%{node_type: :synth, ...}` which represents a synth node.
     """
 
     defstruct [
@@ -53,20 +53,20 @@ defmodule SuperCollider.Message.QueryTree do
                 {rest, []}
             end
                 
-        acc = acc ++ [%{node_id: node_id, type: :synth, num_children: length(child_controls), synth_name: synthdef_name, controls: child_controls}]
+        acc = acc ++ [%{node_id: node_id, node_type: :synth, num_children: length(child_controls), synth_name: synthdef_name, controls: child_controls}]
         parse_child(rem_data, flag, acc, rem_children-1)
     end
 
     # This is an empty group
     defp parse_child([node_id, 0 | rest]=_children, flag, acc, rem_children) do
-        acc = acc ++ [%{group_node_id: node_id, type: :group, num_children: 0, children: []}]
+        acc = acc ++ [%{group_node_id: node_id, node_type: :group, num_children: 0, children: []}]
         parse_child(rest, flag, acc, rem_children-1)
     end
 
     # This is group
     defp parse_child([node_id, num_children | rest]=_children, flag, acc, rem_children) when num_children > 0 do
         children = parse_child(rest, flag, [], num_children)
-        acc = acc ++ [%{group_node_id: node_id, type: :group, num_children: num_children, children: children}]
+        acc = acc ++ [%{group_node_id: node_id, node_type: :group, num_children: num_children, children: children}]
         parse_child(rest, flag, acc, rem_children-1)
     end
 

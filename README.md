@@ -29,10 +29,9 @@ This library is currently under active development and it’s API is likely to c
 
 ## Architecture
 This library consists of a number of modules, the main ones being:
--	`SuperCollider` which allows you to quickly get going without needing to understand too much of this library’s architecture.
+-	`SuperCollider` which allows you to quickly get going without needing to understand too much of this library’s architecture. Using the APIs at this level is useful for live coding in Livebook.
 -	`SuperCollider.SynthDef` which is an Elixir struct representation of SuperCollider’s synth definitions, built from networks of UGens (unit generators) which generate or process both audio and control signals.
--	`SuperCollider.SoundServer` a GenServer which is used to create the main process for sending and listening to scsynth or supernova messages. Messages are sent using [Open Sound Control (OSC)](https://en.wikipedia.org/wiki/Open_Sound_Control) protocol via UDP.
-
+-	`SuperCollider.SoundServer` a GenServer which is used to create the main process for sending and listening to scsynth or supernova messages. Messages are sent using [Open Sound Control (OSC)](https://en.wikipedia.org/wiki/Open_Sound_Control) protocol via UDP. When building your own apps, you may wish to add this to your application's supervision tree.
 
 ## Example
 Below shows some basic examples of:
@@ -47,7 +46,7 @@ alias SuperCollider
 alias SuperCollider.SynthDef
 
 # Start the SoundServer. If scynth or supernova isn’t loaded, it will attempt to boot it.
-SuperCollider.start()
+SuperCollider.start_link()
 
 # Get the status from scynth or supernova
 SuperCollider.command(:status)
@@ -56,17 +55,17 @@ SuperCollider.command(:status)
 SuperCollider.response[:status]
 
 # This reurns the status in a list of Tuples like this:
-# [
-#  {"unused", 1},
-#  {"number of unit generators", 0},
-#  {"number of synths", 0},
-#  {"number of groups", 2},
-#  {"number of loaded synth definitions", 109},
-#  {"average percent CPU usage for signal processing", 0.022731395438313484},
-#  {"peak percent CPU usage for signal processing", 0.09797607362270355},
-#  {"nominal sample rate", 44100.0},
-#  {"actual sample rate", 44099.97439210702}
-# ]
+%SuperCollider.Message.Status{
+  unused: 1,
+  num_ugens: 4,
+  num_synths: 1,
+  num_groups: 1,
+  num_synthdefs_loaded: 5,
+  avg_cpu: 1.456225872039795,
+  peak_cpu: 14.407142639160156,
+  nominal_sample_rate: 44100.0,
+  actual_sample_rate: 44099.99716593081
+}
 
 # Send a command to play a basic 300Hz sinusoidal sound on node 100
 # This assumes the sine SynthGen is installed on the server

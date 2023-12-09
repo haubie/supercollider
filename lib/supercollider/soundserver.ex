@@ -15,26 +15,28 @@ defmodule SuperCollider.SoundServer do
   {:ok, pid} = GenServer.start_link(SoundServer, SoundServer.new(opts))
   ```
 
+  To add it to you applications supervision tree, see [Adding SoundServer to your application supervision tree](#start_link/1-adding-soundserver-to-your-application-supervision-tree).
+
   ## Requesting the server's status
   ```
   SoundServer.command(pid, :status)
 
   # If scynth returned an OSC status response message, you can access it by fetching the SoundServer's state, accessing the responses map and status key:
 
-  SoundServer.state(pid).responses[:status]
+  iex> SoundServer.state(pid).responses[:status]
 
   # Returns:
-  # [
-  #   {"unused", 1},
-  #   {"number of unit generators", 0},
-  #   {"number of synths", 0},
-  #   {"number of groups", 2},
-  #   {"number of loaded synth definitions", 109},
-  #   {"average percent CPU usage for signal processing", 0.026054037734866142},
-  #   {"peak percent CPU usage for signal processing", 0.07464269548654556},
-  #   {"nominal sample rate", 44100.0},
-  #   {"actual sample rate", 44099.97125381111}
-  # ]
+  %SuperCollider.Message.Status{
+    unused: 1,
+    num_ugens: 4,
+    num_synths: 1,
+    num_groups: 1,
+    num_synthdefs_loaded: 5,
+    avg_cpu: 0.02616635337471962,
+    peak_cpu: 0.10551269352436066,
+    nominal_sample_rate: 44100.0,
+    actual_sample_rate: 44100.01409481425
+  }
   ```
 
   ## Play a sine wave UGen
@@ -72,12 +74,13 @@ defmodule SuperCollider.SoundServer do
 
   @doc """
   The SoundServer struct colds the servers basic state:
-  - ip: the IP address of scserver. This defaults to '127.0.0.1'
-  - hostname: the hostname of the server. This defaults to 'localhost'.
-  - port: the port used to communicate with scserver. This defaults to 57110.
-  - socket: the UDP socket used to communicate with scserver, once the connection is open.
-  - type: which SuperCollider server is being used, accepts :scsynth (default) or :supernova (multicore)
-  - booted?: this is set to `true` when scynth or supernova has been succesfully connected to when this GenServer started.
+  - `ip:` the IP address of scserver. This defaults to '127.0.0.1'
+  - `hostname:` the hostname of the server. This defaults to 'localhost'.
+  - `port:` the port used to communicate with scserver. This defaults to 57110.
+  - `socket:` the UDP socket used to communicate with scserver, once the connection is open.
+  - `type:` which SuperCollider server is being used, accepts :scsynth (default) or :supernova (multicore)
+  - `booted?`: this is set to `true` when scynth or supernova has been succesfully connected to when this GenServer started
+  - `client_id`: the client id given to this GenServer process by the scynth or supernova.
   """
   defstruct ip: '127.0.0.1',
             hostname: 'localhost',
@@ -85,6 +88,7 @@ defmodule SuperCollider.SoundServer do
             socket: nil,
             type: :scsynth,
             booted?: false,
+            client_id: 0,
             responses: %{}
 
   # Genserver callbacks
@@ -100,7 +104,44 @@ defmodule SuperCollider.SoundServer do
   def init(soundserver \\ %__MODULE__{}) do
     Logger.info("Initialising sound server with #{inspect(soundserver)}")
     new_state = run(soundserver)
-    {:ok, new_state}
+    {:ok, new_state, {:continue, :get_client_id}}
+  end
+
+  @doc """
+  `:get_client_id` is called immediately after the SoundServer is initialised.
+  
+  After waiting 2 seconds, it sends a `:notify` command to scynth or supernova which returns the client id of this instance of the GenServer.
+
+  Even though scynth or supernova has loaded at this point, the 2 second delay is to ensure that it is ready to recieve the notify command and assign client ids.
+
+  The client id is accessible via the `:client_id` key in this GenServer's state, e.g.:
+
+  ```
+  # Start three separate SoundServers
+  iex> {:ok, server_one} = SuperCollider.SoundServer.start_link()
+  iex> {:ok, server_two} = SuperCollider.SoundServer.start_link()
+  iex> {:ok, server_three} = SuperCollider.SoundServer.start_link()
+
+  # Get the client ID:
+  iex> SuperCollider.SoundServer.state(server_one).client_id
+  0
+
+  iex> SuperCollider.SoundServer.state(server_two).client_id
+  1
+
+  iex> SuperCollider.SoundServer.state(server_three).client_id
+  3
+  ```
+  """
+  @impl true
+  def handle_continue(:get_client_id, soundserver) do
+    id = :erlang.unique_integer([:positive])
+    Logger.info("Requesting client ID for SoundServer: #{inspect self()} with Sync ID #{id}")
+    GenServer.cast(self(), {:command, :sync, [id]})
+    :timer.sleep(1500)
+    # The notify command
+    GenServer.cast(self(), {:command, :notify, []})
+    {:noreply, soundserver}
   end
 
   @doc """
@@ -141,8 +182,6 @@ defmodule SuperCollider.SoundServer do
       MyAppWeb.Endpoint,
     ]
 
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
     opts = [strategy: :one_for_one, name: MyApp.Supervisor]
     Supervisor.start_link(children, opts)
   end
@@ -168,32 +207,33 @@ defmodule SuperCollider.SoundServer do
 
   ```
   %SuperCollider.SoundServer{
-    ip: '127.0.0.1',
-    hostname: 'localhost',
+    ip: ~c"127.0.0.1",
+    hostname: ~c"localhost",
     port: 57110,
-    socket: #Port<0.7>,
+    socket: #Port<0.6>,
+    type: :scsynth,
+    booted?: true,
+    client_id: 0,
     responses: %{
-      fail: ["/n_free", "Node 100 not found"],
-      status: [
-        {"unused", 1},
-        {"number of unit generators", 0},
-        {"number of synths", 0},
-        {"number of groups", 2},
-        {"number of loaded synth definitions", 109},
-        {"average percent CPU usage for signal processing", 0.026054037734866142},
-        {"peak percent CPU usage for signal processing", 0.07464269548654556},
-        {"nominal sample rate", 44100.0},
-        {"actual sample rate", 44099.97125381111}
-      ],
-      version: [
-        {"Program name. May be \"scsynth\" or \"supernova\".", "scsynth"},
-        {"Major version number. Equivalent to sclang's Main.scVersionMajor.", 3},
-        {"Minor version number. Equivalent to sclang's Main.scVersionMinor.", 13},
-        {"Patch version name. Equivalent to the sclang code \".\" ++ Main.scVersionPatch ++ Main.scVersionTweak.",
-        ".0"},
-        {"Git branch name.", "Version-3.13.0"},
-        {"First seven hex digits of the commit hash.", "3188503"}
-      ]
+      status: %SuperCollider.Message.Status{
+        unused: 1,
+        num_ugens: 4,
+        num_synths: 1,
+        num_groups: 1,
+        num_synthdefs_loaded: 5,
+        avg_cpu: 0.02616635337471962,
+        peak_cpu: 0.10551269352436066,
+        nominal_sample_rate: 44100.0,
+        actual_sample_rate: 44100.01409481425
+      },
+      version: %SuperCollider.Message.Version{
+        name: "scsynth",
+        major_version: 3,
+        minor_version: 13,
+        patch_name: ".0",
+        git_branch: "Version-3.13.0",
+        commit_hash_head: "3188503"
+      }
     }
   }
   ```
@@ -255,9 +295,9 @@ defmodule SuperCollider.SoundServer do
   `{:udp, process_port, ip_addr, port_num, osc_response}`
 
   The `handle_info/2` callback will forward these messages to `Response.process_osc_message/2` for handling.
-  The handler code must return the updated SoundServer struct for a valid state to be maintained.
+  The handler code returns an updated SoundServer struct so that a valid state is maintained.
 
-  To get the messages, use `SuperCollider.response()`.
+  To get the messages, use `SuperCollider.SoundServer.state(<pid>).responses` where <pid> is the process id of the SoundServer, or `SuperCollider.response()` if using the top-level API.
   """
   @impl true
   def handle_info(msg, state) do
@@ -307,7 +347,7 @@ defmodule SuperCollider.SoundServer do
   """
   def run(soundserver \\ %__MODULE__{}) do
     with {:ok, socket} <- open(),
-         :ok <- maybe_boot_scsynth(%{soundserver | socket: socket}) do
+         {:ok, soundserver} <- maybe_boot_scsynth(%{soundserver | socket: socket}) do
       %__MODULE__{soundserver | socket: socket, booted?: true}
     else
       _any -> {:error, "Could not be initialised. UDP socket could not be opened."}
@@ -326,11 +366,13 @@ defmodule SuperCollider.SoundServer do
   TODO: The location of the scysnth binary is currently set to the fixed locations above, but this will need to be moved out into a config or using different search strategies for different OSes.
   """
   def maybe_boot_scsynth(soundserver) do
-    Logger.info("#{soundserver.type} - waiting up to 5 seconds to see if already loaded ⏳")
+    Logger.info("#{soundserver.type} - waiting up to 3 seconds to see if already loaded ⏳")
 
     cmd = @server_type[os_type()][soundserver.type]
 
-    if !scsynth_booted?(soundserver) do
+    {booted?, soundserver} = scsynth_booted?(soundserver)
+
+    if !booted? do
       Logger.info("#{soundserver.type} - attempting to start 🏁")
 
       boot_cmd = fn ->
@@ -339,9 +381,10 @@ defmodule SuperCollider.SoundServer do
 
       Task.async(boot_cmd)
 
-      :ok
+      # TODO: Refactor to return {:error, soundserver} if the System.cmd fails or scynth or supernova errors out.
+      {:ok, soundserver}
     else
-      :ok
+      {:ok, soundserver}
     end
   end
 
@@ -350,11 +393,11 @@ defmodule SuperCollider.SoundServer do
 
   It does this by sending the OSC command '/status' through the previously opened UDP port to the address that scsynth is expected.
 
-  It then waits up to 5 seconds to see if a UDP packet is returned.
+  It then waits up to 3 seconds to see if a UDP packet is returned.
 
   This function returns:
-  - `true` if if a '/status.reply' message was recieved via UDP.
-  - `false` if either a non-compliant message is recieved or no message is recieved after 5 seconds. In this case the scsynth has been considered not to be loaded.
+  - `{true, soundserver}` if if a '/status.reply' message was recieved via UDP. The soundserver state will be updated/
+  - `{false, soundserver}` if either a non-compliant message is recieved or no message is recieved after 5 seconds. In this case the scsynth has been considered not to be loaded.
 
   Note: an UDP socket must be set on the `%SoundServer{}` state, e.g.:
 
@@ -366,11 +409,12 @@ defmodule SuperCollider.SoundServer do
       hostname: 'localhost',
       port: 57110,
       type: :scsynth,
+      client_id: 0,
       responses: %{}
     }
 
   SuperCollider.SoundServer.scsynth_booted?(soundserver)
-  # Returns true if booted
+  # Returns {true, soundserver} if booted
   ```
 
   If you don't have a curently opened socket, you can get one by calling `SoundServer.open/1`, e.g.:
@@ -386,6 +430,7 @@ defmodule SuperCollider.SoundServer do
   #   hostname: 'localhost',
   #   port: 57110,
   #   type: :scsynth,
+  # client_id: 0,
   #   responses: %{}
   # }
 
@@ -393,10 +438,10 @@ defmodule SuperCollider.SoundServer do
 
   # If already booted returns true
   # 11:53:43.734 [info] scsynth - already booted ✅
-  # true
+  # {true, soundserver}
   ```
 
-  Sockets are automatically created when SoundServer is booted in the typical way through `SoundServer.start_link` or `SuperCollider.start`.
+  Sockets are automatically created when SoundServer is booted in the typical way through `SuperCollider.SoundServer.start_link` or `SuperCollider.start_link`.
   """
   def scsynth_booted?(soundserver) do
     Command.send_osc(soundserver, "/status")
@@ -405,18 +450,24 @@ defmodule SuperCollider.SoundServer do
       {:udp, _process_port, _ip_addr, _port_num, data} ->
         message = OSCx.decode(data)
 
-        %{address: "/status.reply", arguments: _arguments}  = if is_list(message), do:  List.first(message), else: message
+        %{address: "/status.reply", arguments: arguments}  = if is_list(message), do:  List.first(message), else: message
 
         Logger.info("#{soundserver.type} - already booted ✅")
-        true
+
+        # Update SoundServer state with version information
+        status_info = SuperCollider.Message.Status.parse(arguments)
+        Logger.notice("Status: #{inspect(status_info)}")
+        soundserver= %{soundserver | responses: Map.put(soundserver.responses, :status, status_info)}
+
+        {true, soundserver}
 
       msg ->
         Logger.info("#{soundserver.type} - non-matching UDP message, #{soundserver.type} is probably not booted. \nOSC message recieved: (#{inspect(msg)})")
-        false
+        {false, soundserver}
     after
-      5_000 ->
+      3_000 ->
         Logger.info("#{soundserver.type} - no response, #{soundserver.type} likely not booted.")
-        false
+        {false, soundserver}
     end
   end
 

@@ -4,7 +4,8 @@
 
 ```elixir
 Mix.install([
-  {:supercollider, "~> 0.2.0"}
+  # {:supercollider, "~> 0.2.0"}
+  {:supercollider, path: "../"}
 ])
 
 alias SuperCollider.SynthDef
@@ -283,14 +284,8 @@ SuperCollider.command(:d_recv, bin_data)
 <!-- livebook:{"output":true} -->
 
 ```
-:ok
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-
-19:13:03.418 [info] /d_recv
+{:error,
+ "Global SuperCollider.SoundServer pid not stored as a persistient term under :supercollider_soundserver"}
 ```
 
 **That's it!**

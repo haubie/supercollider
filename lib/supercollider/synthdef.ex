@@ -79,7 +79,7 @@ defmodule SuperCollider.SynthDef do
   ```
   sc_binary = SynthDef.to_binary(brown_noise_synthdef)
   ```
-  Assuming SuperCollider (scsynth or supernova) is running and `SuperCollider.SoundServer` has been started, e.g. through `SuperCollider.start()`, you can send this binary SynthDef to the server and play it!
+  Assuming SuperCollider (scsynth or supernova) is running and `SuperCollider.SoundServer` has been started, e.g. through `SuperCollider.start_link/1` you can send this binary SynthDef to the server and play it!
 
   Send the binary to SuperCollider server (scsynth or supernova):
   ```
