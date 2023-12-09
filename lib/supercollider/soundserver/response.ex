@@ -102,7 +102,7 @@ defmodule SuperCollider.SoundServer.Response do
       ## In case the client was already registered and tries to register again (after a reboot or network problem),
       ## scsynth sends back a failed message AND the client this client had earlier, and the client will use that client id.
       ## Error is shown as a warning in this case and the client id reassigned to the soundserver state.
-      %{address: "/fail", arguments: ["/notify", message, client_id]=arguments} ->
+      %{address: "/fail", arguments: ["/notify", _message, client_id]=arguments} ->
         error = Message.Error.parse(arguments)
         Logger.warning("Previously registered at client id: #{client_id}. Message: #{inspect error}")
         %SoundServer{soundserver | client_id: client_id}

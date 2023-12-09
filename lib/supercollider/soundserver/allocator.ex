@@ -2,19 +2,48 @@ defmodule SuperCollider.SoundServer.Allocator do
     @moduledoc """
     An agent used for allocating and maintaining valid IDs for nodes on the server.
 
-    # Named IDs
-    Additionally, this library supports 'named' IDs, that is, using Elixir strings or atoms to represent a node id.
-    This module translates the names (string or atom) to a node number on the SuperCollider server, and vice-versa.
+    ## Example
+    ```
+    iex> alias SuperCollider.SoundServer.Allocator
+    iex> {:ok, alloc} = Allocator.start_link()
+    {:ok, #PID<0.196.0>}
 
-    # Node ID allocation method
-    This module is largely a port of NodeIDAllocator from SuperCollider. The Python [Supriya library](https://github.com/josiah-wolf-oberholtzer/supriya/) was also used as a reference.
+    # Use the 'temporary' node id allocator three times in a row
+    iex> for _i <- 1..3, do: Allocator.allocate_node(alloc)
+    [1000, 1001, 1002]
 
-    # More information
+    # Use the permanent node id allocator three times in a row
+    iex> for _i <- 1..3, do: Allocator.allocate_permanent_node(alloc)
+    [1, 2, 3]
+
+    # Free permanent node id 2
+    iex> Allocator.free_permanent_node(alloc, 2)
+    :ok
+    
+    # Now it is freed, it will be recycled in the next allocate_permanent_node/1 allocation
+    iex> Allocator.allocate_permanent_node(alloc)
+    2
+    ```
+
+    ## About ID allocation
+    To keep track of node ids, scsynth or supernova clients are responsible for allocating them. 
+
+    That can cause problems in multi-client environments if different node allocation methods are used.
+
+    This module uses the *NodeIDAllocator* allocation scheme from sclang as it is used by many non-sclang clients.
+
+    Along with NodeIDAllocator source code from SuperCollider, the Python [Supriya library](https://github.com/josiah-wolf-oberholtzer/supriya/) was also used as a reference.
+
+    ### More information
     The following served as references for the design of this module: 
     - [Multi client setups](https://doc.sccode.org/Guides/MultiClient_Setups.html)
-    - [ReadableNodeIDAllocator](https://doc.sccode.org/Classes/ReadableNodeIDAllocator.html)
     - [NodeIDAllocator in Engine.sc](https://github.com/supercollider/supercollider/blob/2db872ad2a42ff85726566149855ecdb60d65b77/SCClassLibrary/Common/Control/Engine.sc#L4)
+    - [ReadableNodeIDAllocator](https://doc.sccode.org/Classes/ReadableNodeIDAllocator.html)
     - [Supriya (Python-based) allocators](https://github.com/josiah-wolf-oberholtzer/supriya/blob/abafd35490565327e2cd6afff81e6a2cd9dc59d6/supriya/contexts/allocators.py#L264)
+    
+    ## Named IDs
+    Additionally, this library supports 'named' IDs, that is, using Elixir strings or atoms to represent a node id.
+    This module translates the names (string or atom) to a node number on the SuperCollider server, and vice-versa.
     """
 
     use Agent
@@ -28,7 +57,8 @@ defmodule SuperCollider.SoundServer.Allocator do
         mask: Bitwise.bsl(0, 26),
         temp: 1000,
         next_permanent_id: 1,
-        freed_permanent_ids: MapSet.new()
+        freed_permanent_ids: MapSet.new(),
+        named_ids: %{}
     ]
 
     @doc """
@@ -55,7 +85,8 @@ defmodule SuperCollider.SoundServer.Allocator do
             mask: mask(client_id),
             temp: initial_node_id,
             next_permanent_id: 1,
-            freed_permanent_ids: MapSet.new()
+            freed_permanent_ids: MapSet.new(),
+            named_ids: %{}
         }
     end
 
@@ -74,10 +105,73 @@ defmodule SuperCollider.SoundServer.Allocator do
     def state(allocator), do: Agent.get(allocator, & &1)
 
     @doc """
-    Returns the next node
+    Allocates a node id for a 'named' node.
+
+    The name is user defined.
+
+    Returns a tuple in following format:
+    - `{:ok, name, node_id}` freshly allocated node id for the name
+    - `{:existing, name, node_id}` the node has previously been allocated. It will return the previously assigned node_id.
+
+    ## Example
+    ```
+    iex> {:ok, al} = A.start_link
+    {:ok, #PID<0.184.0>}
+
+    # Allocate a node id for the name :fuzz
+    iex> A.allocate_node_name(al, :fuzz)
+    {:ok, :fuzz, 1}
+
+    # Attempt allocating a node id for the name :fuzz
+    # Returns `:existing` in tuple to indicate is has previously been assigned
+    iex> A.allocate_node_name(al, :fuzz)
+    {:existing, :fuzz, 1}
+
+    # Allocate a node id for the name :buzz
+    iex> A.allocate_node_name(al, :buzz)
+    {:ok, :buzz, 2}
+    ```
     """
-    def next_node_id(allocator) do
-        allocator
+    def allocate_node_name(allocator, name) do    
+        case lookup_node_name(allocator, name) do
+            
+            # Name has already been allocated
+            node_id when is_integer(node_id) ->
+                {:existing, name, node_id}
+            
+            # Name has already not been allocated
+            nil ->
+                node_id = allocate_permanent_node(allocator)
+                Agent.update(allocator, &Map.put(&1, :named_ids, Map.put(&1.named_ids, name, node_id)))
+                {:ok, name, node_id}
+        end 
+    end
+
+    @doc """
+    Returns the node id for a named node.
+
+    If the name doesn't exist, returns nil.
+
+    ## Example
+    ```
+    iex> A.lookup_node_name(al, :fuzz)
+    1
+
+    iex> A.lookup_node_name(al, :buzz)
+    2
+
+    iex> A.lookup_node_name(al, :phaser)
+    nil
+    """
+    def lookup_node_name(allocator, name), do: Agent.get(allocator, &Map.get(&1.named_ids, name))
+
+    def free_node_name(allocator, name) do
+        node_id = Agent.get_and_update(allocator, fn state ->
+            {node_id, named_ids} = Map.pop(state.named_ids, name)
+            {node_id, %{state | named_ids: named_ids}}
+        end)
+
+        if node_id, do: free_permanent_node(allocator, node_id)
     end
 
     @doc """
