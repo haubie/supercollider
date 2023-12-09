@@ -81,6 +81,7 @@ defmodule SuperCollider.SoundServer do
   - `type:` which SuperCollider server is being used, accepts :scsynth (default) or :supernova (multicore)
   - `booted?`: this is set to `true` when scynth or supernova has been succesfully connected to when this GenServer started
   - `client_id`: the client id given to this GenServer process by the scynth or supernova.
+  - `max_logins`: the maximum number of logins that scynth or supernova reported being able to handle.
   """
   defstruct ip: '127.0.0.1',
             hostname: 'localhost',
@@ -89,6 +90,7 @@ defmodule SuperCollider.SoundServer do
             type: :scsynth,
             booted?: false,
             client_id: 0,
+            max_logins: nil,
             responses: %{}
 
   # Genserver callbacks
@@ -138,7 +140,7 @@ defmodule SuperCollider.SoundServer do
     id = :erlang.unique_integer([:positive])
     Logger.info("Requesting client ID for SoundServer: #{inspect self()} with Sync ID #{id}")
     GenServer.cast(self(), {:command, :sync, [id]})
-    :timer.sleep(1500)
+    :timer.sleep(2000)
     # The notify command
     GenServer.cast(self(), {:command, :notify, []})
     {:noreply, soundserver}
@@ -430,7 +432,7 @@ defmodule SuperCollider.SoundServer do
   #   hostname: 'localhost',
   #   port: 57110,
   #   type: :scsynth,
-  # client_id: 0,
+  #   client_id: 0,
   #   responses: %{}
   # }
 

@@ -38,6 +38,7 @@ defmodule SuperCollider.SoundServer.Response do
     type: :scsynth,
     booted?: true,
     client_id: 0,
+    max_logins: 64,
     responses: %{
       status: %SuperCollider.Message.Status{
         unused: 1,
@@ -98,7 +99,17 @@ defmodule SuperCollider.SoundServer.Response do
         Logger.info("Group tree: #{inspect(tree)}")
         soundserver  
 
+      ## In case the client was already registered and tries to register again (after a reboot or network problem),
+      ## scsynth sends back a failed message AND the client this client had earlier, and the client will use that client id.
+      ## Error is shown as a warning in this case and the client id reassigned to the soundserver state.
+      %{address: "/fail", arguments: ["/notify", message, client_id]=arguments} ->
+        error = Message.Error.parse(arguments)
+        Logger.warning("Previously registered at client id: #{client_id}. Message: #{inspect error}")
+        %SoundServer{soundserver | client_id: client_id}
+        |> put_response(:fail, error)
+
       %{address: "/fail", arguments: arguments} ->
+        IO.inspect arguments, label: "fail args"
         error = Message.Error.parse(arguments)
         Logger.error(inspect(error))
         put_response(soundserver, :fail, error)
@@ -111,7 +122,7 @@ defmodule SuperCollider.SoundServer.Response do
       %{address: "/done", arguments: ["/notify" | rest_args]=_arguments} ->
         notification = Message.Notify.parse(rest_args)
         Logger.info("Notify: #{inspect(notification)}")
-        %SoundServer{soundserver | client_id: notification.client_id}
+        %SoundServer{soundserver | client_id: notification.client_id, max_logins: notification.max_logins}
 
       %{address: "/done", arguments: arguments} ->
         notification = Message.Done.parse(arguments)

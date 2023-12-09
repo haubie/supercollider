@@ -46,6 +46,13 @@ defmodule SuperCollider.SoundServer.Allocator do
     end
 
 
+    @doc """
+    
+    """
+    def next_node_id() do
+    end
+
+
     # @doc """
     # Gets a value from the `bucket` by `key`.
     # """
