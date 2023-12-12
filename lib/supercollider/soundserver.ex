@@ -73,7 +73,7 @@ defmodule SuperCollider.SoundServer do
   # Struct definitions
 
   @doc """
-  The SoundServer struct colds the servers basic state:
+  The SoundServer struct holds the servers basic state:
   - `ip:` the IP address of scserver. This defaults to '127.0.0.1'
   - `hostname:` the hostname of the server. This defaults to 'localhost'.
   - `port:` the port used to communicate with scserver. This defaults to 57110.
@@ -105,14 +105,17 @@ defmodule SuperCollider.SoundServer do
   @impl true
   def init(soundserver \\ %__MODULE__{}) do
     Logger.info("Initialising sound server with #{inspect(soundserver)}")
-    new_state = run(soundserver)
-    {:ok, new_state, {:continue, :get_client_id}}
+    case run(soundserver) do
+      %{booted?: true}=new_state -> {:ok, new_state, {:continue, :get_client_id}}
+      {:error, reason} -> {:error, reason}
+    end
+    
   end
 
   @doc """
   `:get_client_id` is called immediately after the SoundServer is initialised.
   
-  After waiting 2 seconds, it sends a `:notify` command to scynth or supernova which returns the client id of this instance of the GenServer.
+  After waiting 3 seconds, it sends a `:notify` command to scynth or supernova which returns the client id of this instance of the GenServer.
 
   Even though scynth or supernova has loaded at this point, the 2 second delay is to ensure that it is ready to recieve the notify command and assign client ids.
 
@@ -140,8 +143,8 @@ defmodule SuperCollider.SoundServer do
     id = :erlang.unique_integer([:positive])
     Logger.info("Requesting client ID for SoundServer: #{inspect self()} with Sync ID #{id}")
     GenServer.cast(self(), {:command, :sync, [id]})
-    :timer.sleep(2000)
-    # The notify command
+    :timer.sleep(3000)
+    # The notify command returns the client id assigned by sclang or supernova
     GenServer.cast(self(), {:command, :notify, []})
     {:noreply, soundserver}
   end
@@ -373,21 +376,23 @@ defmodule SuperCollider.SoundServer do
     cmd = @server_type[os_type()][soundserver.type]
 
     {booted?, soundserver} = scsynth_booted?(soundserver)
+    
+    cond do
+      !booted? and File.exists?(cmd) ->
+        Logger.info("#{soundserver.type} - attempting to start 🏁")
+        Task.async(fn -> System.cmd(cmd, ["-u", Integer.to_string(soundserver.port)]) end)
+        # TODO: Refactor to return {:error, soundserver} if the System.cmd fails or scynth or supernova errors out.
+        {:ok, soundserver}
 
-    if !booted? do
-      Logger.info("#{soundserver.type} - attempting to start 🏁")
+      !booted? and !File.exists?(cmd) ->
+        Logger.error("#{soundserver.type} - unable to find executable at #{cmd}.\nPlease start manually.")
+        {:error, soundserver}
 
-      boot_cmd = fn ->
-        System.cmd(cmd, ["-u", Integer.to_string(soundserver.port)])
-      end
-
-      Task.async(boot_cmd)
-
-      # TODO: Refactor to return {:error, soundserver} if the System.cmd fails or scynth or supernova errors out.
-      {:ok, soundserver}
-    else
-      {:ok, soundserver}
+      true ->
+        # Assume it is already booted
+        {:ok, soundserver} 
     end
+
   end
 
   @doc """

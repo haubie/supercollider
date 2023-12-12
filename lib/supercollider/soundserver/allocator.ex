@@ -44,6 +44,17 @@ defmodule SuperCollider.SoundServer.Allocator do
     ## Named IDs
     Additionally, this library supports 'named' IDs, that is, using Elixir strings or atoms to represent a node id.
     This module translates the names (string or atom) to a node number on the SuperCollider server, and vice-versa.
+
+    ```
+    iex> Allocator.allocate_node_name(alloc, :fuzz)
+    {:ok, :fuzz, 4}
+
+    iex> Allocator.lookup_node_name(alloc, :fuzz)
+    4
+
+    iex> Allocator.free_node_name(alloc, :fuzz)
+    :ok
+    ```
     """
 
     use Agent
@@ -107,7 +118,7 @@ defmodule SuperCollider.SoundServer.Allocator do
     @doc """
     Allocates a node id for a 'named' node.
 
-    The name is user defined.
+    The `name` is user defined. Uses `allocate_permanent_node/1` to allocate the node id.
 
     Returns a tuple in following format:
     - `{:ok, name, node_id}` freshly allocated node id for the name
@@ -150,7 +161,7 @@ defmodule SuperCollider.SoundServer.Allocator do
     @doc """
     Returns the node id for a named node.
 
-    If the name doesn't exist, returns nil.
+    If the name doesn't exist, returns `nil`.
 
     ## Example
     ```
@@ -165,6 +176,13 @@ defmodule SuperCollider.SoundServer.Allocator do
     """
     def lookup_node_name(allocator, name), do: Agent.get(allocator, &Map.get(&1.named_ids, name))
 
+    @doc """
+    Frees the node name as well as the node id.
+
+    Returns:
+    - `:ok` if the node is freed
+    - `nil` if the doesn't exist.
+    """
     def free_node_name(allocator, name) do
         node_id = Agent.get_and_update(allocator, fn state ->
             {node_id, named_ids} = Map.pop(state.named_ids, name)
@@ -215,7 +233,7 @@ defmodule SuperCollider.SoundServer.Allocator do
     @doc """
     Frees a permanent node id.
 
-    The freed ids are reallocated when the allocate_permanent_node/1 is called.
+    The freed ids are reallocated when the `allocate_permanent_node/1` is called.
     """
     def free_permanent_node(allocator, node_id) do
         state = Allocator.state(allocator)

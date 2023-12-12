@@ -76,9 +76,13 @@ defmodule SuperCollider do
   - Windows: \\Program Files\\SuperCollider\\
   """
   def start_link(opts \\ []) do
-    {:ok, pid} = GenServer.start_link(SoundServer, SoundServer.new(opts))
-    :persistent_term.put(:supercollider_soundserver, pid)
-    pid
+    case GenServer.start_link(SoundServer, SoundServer.new(opts)) do
+      {:ok, pid} -> 
+        :persistent_term.put(:supercollider_soundserver, pid)
+        pid
+
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   @doc """
@@ -95,6 +99,7 @@ defmodule SuperCollider do
   #   port: 57110,
   #   socket: #Port<0.12>,
   #   type: :supernova,
+  #   client_id: 0,
   #   responses: %{}
   # }
   ```
