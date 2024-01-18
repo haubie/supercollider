@@ -104,7 +104,7 @@ SuperCollider.start_link()
 
 ```
 
-21:18:10.202 [info] Initialising sound server with %SuperCollider.SoundServer{ip: ~c"127.0.0.1", hostname: ~c"localhost", port: 57110, socket: nil, type: :scsynth, booted?: false, client_id: 0, responses: %{}}
+21:18:10.202 [info] Initialising sound server with %SuperCollider.SoundServer{host: ~c"127.0.0.1", port: 57110, socket: nil, type: :scsynth, booted?: false, client_id: 0, responses: %{}}
 
 21:18:10.202 [info] scsynth - waiting up to 5 seconds to see if already loaded ⏳
 

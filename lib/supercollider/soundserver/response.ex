@@ -3,12 +3,12 @@ defmodule SuperCollider.SoundServer.Response do
   This module is used to process OSC response messages sent from the SuperCollider.
 
   Currently, the following message types are supported:
-  * `/version.reply` the server will send this OSC response after the `SuperCollider.command(:version)` command is issued
-  * `/status.reply` the server will send this OSC response after the `SuperCollider.command(:status)` command is issued
+  * `/version.reply` the server will send this OSC response after the `SuperCollider.command(:version)` command is issued. This will be added to the `:responses` under the `:version` key.
+  * `/status.reply` the server will send this OSC response after the `SuperCollider.command(:status)` command is issued. This will be added to the `:responses` under the `:status` key.
   * `/g_queryTree.reply` a groups subtree, from the `:g_queryTree` command
   * `/n_* `node notification messages, such as /n_go, /n_end, /n_on, /n_off, /n_move, /n_info (interest in these are registered via the `:notify` command)
   * `/tr` a trigger message (interest in this is registered via the `:notify` command)
-  * `/fail` the server will send this OSC response when a command fails, such as freeing a node that doesn't exist `SuperCollider.command(:n_free, 800)`
+  * `/fail` the server will send this OSC response when a command fails, such as freeing a node that doesn't exist `SuperCollider.command(:n_free, 800)`. This will be prepended to a list of errors to `:responses` under the `:fail` key.
   * `/late` a command was received too late
   * `/done` an asynchronous message has completed
   * `/done /notify` a notify confirmation message
@@ -31,8 +31,7 @@ defmodule SuperCollider.SoundServer.Response do
   Version, status and fail messages are added to the SoundServer's state under the `responses:` key, e.g.:
   ```
   %SuperCollider.SoundServer{
-    ip: ~c"127.0.0.1",
-    hostname: ~c"localhost",
+    host: ~c"127.0.0.1",
     port: 57110,
     socket: #Port<0.6>,
     type: :scsynth,
@@ -110,7 +109,7 @@ defmodule SuperCollider.SoundServer.Response do
         error = Message.Error.parse(arguments)
         Logger.warning("Previously registered at client id: #{client_id}. Message: #{inspect error}")  
         {
-          put_response(%SoundServer{soundserver | client_id: client_id}, :fail, error),
+          prepend_response(%SoundServer{soundserver | client_id: client_id}, :fail, error),
           error
         }
 
@@ -118,7 +117,7 @@ defmodule SuperCollider.SoundServer.Response do
         IO.inspect arguments, label: "fail args"
         error = Message.Error.parse(arguments)
         Logger.error(inspect(error))
-        {put_response(soundserver, :fail, error), error}
+        {prepend_response(soundserver, :fail, error), error}
 
       %{address: "/late", arguments: arguments} ->
         notification = Message.Late.parse(arguments)
@@ -164,6 +163,11 @@ defmodule SuperCollider.SoundServer.Response do
   # Helper functions for formatting responses and adding response data to the state (if applicable)
   defp put_response(soundserver, key, value) do
     %{soundserver | responses: Map.put(soundserver.responses, key, value)}
+  end
+
+  defp prepend_response(soundserver, key, value) do
+    updated_values_list = [value] ++ Map.get(soundserver.responses, key, [])
+    %{soundserver | responses: Map.put(soundserver.responses, key, updated_values_list)}
   end
 
 end

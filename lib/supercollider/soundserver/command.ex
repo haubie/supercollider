@@ -41,7 +41,7 @@ defmodule SuperCollider.SoundServer.Command do
   """
 
   def send_to_sc(soundserver, osc_message) do
-    :gen_udp.send(soundserver.socket, soundserver.hostname||soundserver.ip, soundserver.port, osc_message)
+    :gen_udp.send(soundserver.socket, soundserver.host, soundserver.port, osc_message)
   end
 
   @doc section: :osc

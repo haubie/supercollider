@@ -50,6 +50,9 @@ defmodule SuperCollider.MixProject do
           "Group commands": &(&1[:section] == :group_commands),
           "Unit generator commands": &(&1[:section] == :ug_commands),
           "Support functions": &(&1[:section] == :encode_decode),
+          "Public (main) functions": &(&1[:section] == :pub),
+          "GenServer implementation": &(&1[:section] == :impl),
+          "Support": &(&1[:section] == :support),
         ]
       ]
     ]
@@ -80,8 +83,8 @@ defmodule SuperCollider.MixProject do
       ],
       licenses: ["MIT"],
       links: %{
-        "GitHub" => "https://github.com/haubie/supercollider",
-        "SuperCollider (offical)" => "https://supercollider.github.io/"
+        "GitHub (Elixir library)" => "https://github.com/haubie/supercollider",
+        "SuperCollider (official)" => "https://supercollider.github.io/"
         },
       maintainers: ["David Haubenschild"]
     ]

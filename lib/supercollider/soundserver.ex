@@ -6,15 +6,42 @@ defmodule SuperCollider.SoundServer do
   - GenServer which is used to communicate with SuperCollider's scserver or supernova
   - Struct which holds the server's basic state and configuration.
 
+  ## Main functions
+  The main public functions are:
+  - `start_link/1` to start the `SoundServer` GenServer
+  - `command/2` or `command/3` for sending asynchronous commands to scsynth or supernova
+  - `sync_command/2` or `sync_command/3` for sending commands to scsynth or supernova synchronously, waiting for a result to be returned
+  - `state/1` to get the current state of the `SoundServer` GenServer.
+  - `clear_responses/2` to clear values in the responses map (`%SoundServer{responses: %{...}}`). By default, clears the `:fail` messages.
+
+  ### Sync vs. async
+  The difference between `sync_command/2` and `command/2` functions is that if you need to wait around for a response from a command or not. In most cases you'll probably just use the async `command/2` or `command/3`.
+
+  Async commands can update the state and may add responses under the `:responses` key. These can be fetched via the `state/1` function. See `SuperCollider.SoundServer.Response` for details.
+
   ## Basic configuration
-  Buy default, it looks for scynth at 127.0.0.1 or localhost on port 57110.
+  By default, it looks for scynth at 127.0.0.1 or localhost on port 57110.
 
   ## Starting a server
+  ```
+  alias SuperCollider.SoundServer
+  {:ok, pid} = SoundServer.start_link(opts)
+  ```
+  or
   ```
   alias SuperCollider.SoundServer
   {:ok, pid} = GenServer.start_link(SoundServer, SoundServer.new(opts))
   ```
 
+  When SuperCollider.SoundServer starts, it goes through the following steps:
+  1. Check if scsynth or supernova has already been loaded
+  2. If not, attempt to boot it at some common file system locations
+  3. Populate the `%SuperCollider.SoundServer{}` with:
+      - scsynth or supernova's current status under the `:response` key
+      - scsynth or supernova version information under the `:response` key
+      - the client ID assigned by scsynth or supernova.
+
+  ## Adding SoundServer to your supervision tree
   To add it to you applications supervision tree, see [Adding SoundServer to your application supervision tree](#start_link/1-adding-soundserver-to-your-application-supervision-tree).
 
   ## Requesting the server's status
@@ -40,12 +67,41 @@ defmodule SuperCollider.SoundServer do
   ```
 
   ## Play a sine wave UGen
+  ### Async example (don't wait for a return message)
   ```
   # Play a sine wave UGen on node 600, with a frequency of 300
-  SoundServer.command(pid, :s_new, ["sine", 600, 1, 1, ["freq", 300]])
+  SoundServer.command(pid, :s_new, ["sine", 600, 1, 0, ["freq", 300]])
 
   # Stop the sine wave by freeing node 600
   SoundServer.command(pid, :n_free, 600)
+  ```
+  ### Sync example (wait for a return message)
+  ```
+  # Play a sine wave UGen on node 600, with a frequency of 300
+  iex> SoundServer.sync_command(pid, :s_new, ["sine", 600, 1, 0, ["freq", 300]])
+  %SuperCollider.Message.Node{
+    message: "/n_go",
+    id: 600,
+    parent_id: 0,
+    previous_node_id: -1,
+    next_node_id: -1,
+    node_type: :synth,
+    head_node_id: nil,
+    tail_node_id: nil
+  }
+
+  # Stop the sine wave by freeing node 600
+  iex> SoundServer.sync_command(pid, :n_free, 600)
+  %SuperCollider.Message.Node{
+    message: "/n_end",
+    id: 600,
+    parent_id: 0,
+    previous_node_id: -1,
+    next_node_id: -1,
+    node_type: :synth,
+    head_node_id: nil,
+    tail_node_id: nil
+  }
   ```
   """
   use GenServer
@@ -74,28 +130,28 @@ defmodule SuperCollider.SoundServer do
 
   @doc """
   The SoundServer struct holds the servers basic state:
-  - `ip:` the IP address of scserver. This defaults to '127.0.0.1'
-  - `hostname:` the hostname of the server. This defaults to 'localhost'.
+  - `host:` the IP address or hostname of scserver. This defaults to `'127.0.0.1'` but could also be set by name, such as `'localhost'`.
   - `port:` the port used to communicate with scserver. This defaults to 57110.
   - `socket:` the UDP socket used to communicate with scserver, once the connection is open.
   - `type:` which SuperCollider server is being used, accepts :scsynth (default) or :supernova (multicore)
   - `booted?`: this is set to `true` when scynth or supernova has been succesfully connected to when this GenServer started
   - `client_id`: the client id given to this GenServer process by the scynth or supernova.
   - `max_logins`: the maximum number of logins that scynth or supernova reported being able to handle.
+  - `from`: holds the 'from' (the PID and reference id) when the `sync_command` function is called.
   """
-  defstruct ip: '127.0.0.1',
-            hostname: 'localhost',
+  defstruct host: '127.0.0.1',
             port: 57110,
             socket: nil,
             type: :scsynth,
             booted?: false,
             client_id: 0,
             max_logins: nil,
-            responses: %{},
+            responses: %{fail: []},
             from: nil
 
   # Genserver callbacks
 
+  @doc section: :impl
   @doc """
   The init callback accepts `%SoundServer{}` struct holding the initial configuration and state. If none is provided, defaults are used.
 
@@ -113,12 +169,13 @@ defmodule SuperCollider.SoundServer do
     
   end
 
+  @doc section: :impl
   @doc """
   `:get_client_id` is called immediately after the SoundServer is initialised.
   
-  After waiting 3 seconds, it sends a `:notify` command to scynth or supernova which returns the client id of this instance of the GenServer.
+  After waiting 3 seconds, it sends a `:notify` command to scsynth or supernova which returns the client id of this instance of the GenServer. The version of scsynth or supernova is also requested and populated. 
 
-  Even though scynth or supernova has loaded at this point, the 2 second delay is to ensure that it is ready to recieve the notify command and assign client ids.
+  Even though scynth or supernova has loaded at this point, the 3 second delay is to ensure that it is ready to recieve the notify command and assign client ids.
 
   The client id is accessible via the `:client_id` key in this GenServer's state, e.g.:
 
@@ -145,17 +202,19 @@ defmodule SuperCollider.SoundServer do
     Logger.info("Requesting client ID for SoundServer: #{inspect self()} with Sync ID #{id}")
     GenServer.cast(self(), {:command, :sync, [id]})
     :timer.sleep(3000)
-    # The notify command returns the client id assigned by sclang or supernova
+    # The notify command returns the client id assigned by scsynth or supernova
     GenServer.cast(self(), {:command, :notify, []})
+    # This will populate the state with the version of scsynth or supernova
+    GenServer.cast(self(), {:command, :version, []})
     {:noreply, soundserver}
   end
 
+  @doc section: :pub
   @doc """
   Starts the `SuperCollider.SoundServer` GenServer.
 
   You can override the default configuration by passing a keyword list with the new values. Currently the following can be set:
-    - ip: the IP address of scserver. This defaults to '127.0.0.1'
-    - hostname: the hostname of the server. This defaults to 'localhost'.
+    - host: the IP address or hostname of scserver. This defaults to `'127.0.0.1'` but it could be set to a hostname such as `'localhost'`.
     - port: the port used to communicate with scserver. This defaults to 57110.
     - socket: the UDP socket used to communicate with scserver, once the connection is open.
 
@@ -201,11 +260,13 @@ defmodule SuperCollider.SoundServer do
     GenServer.start_link(SoundServer, SoundServer.new(opts), name: name)
   end
 
+  @doc section: :impl
   @impl true
   def handle_call(:state, _from, state) do
     {:reply, state, state}
   end
 
+  @doc section: :pub
   @doc """
   Returns the current state of the server.
 
@@ -213,8 +274,7 @@ defmodule SuperCollider.SoundServer do
 
   ```
   %SuperCollider.SoundServer{
-    ip: ~c"127.0.0.1",
-    hostname: ~c"localhost",
+    host: ~c"127.0.0.1",
     port: 57110,
     socket: #Port<0.6>,
     type: :scsynth,
@@ -248,14 +308,49 @@ defmodule SuperCollider.SoundServer do
     GenServer.call(pid, :state)
   end
 
+  @doc section: :pub
+  @doc """
+  Clears values under the response key with an empty value.
 
+  By default, if no key is given, the `:fail` key is cleared.
+
+  Multiple keys can be given as a list.
+
+  ## Example:
+  ```
+  # Clear the :fail list (will become an empty list)
+  SuperCollider.SoundServer.clear_responses(pid, :fail)
+
+  # Clear the :version and :status values (will become nil values)
+  SuperCollider.SoundServer.clear_responses(pid, [:version, :status])
+  ```
+  """
+  def clear_responses(pid, :fail) do
+    GenServer.cast(pid, {:set_response_value, :fail, []})
+  end
+  def clear_responses(pid, key) when is_list(key) do
+    Enum.each(key, &clear_responses(pid, &1))
+  end  
+  def clear_responses(pid, key) when is_atom(key) or is_binary(key) do
+    GenServer.cast(pid, {:set_response_value, key, nil})
+  end
+
+
+  @doc section: :impl
+  @impl true
+  def handle_cast({:set_response_value, key, value}, state) do
+    new_state = %{state | responses: Map.put(state.responses, key, value)}
+    {:noreply, new_state}
+  end
+
+  @doc section: :impl
   @impl true
   def handle_cast({:command, command_name, args}, state) do
     new_state = apply(Command, command_name, [state] ++ args)
     {:noreply, new_state}
   end
 
-
+  @doc section: :impl
   @impl true
   def handle_call({:sync_command, command_name, args}, from, state) do
     state = %{state | from: from}
@@ -263,6 +358,7 @@ defmodule SuperCollider.SoundServer do
     {:noreply, new_state}
   end
 
+  @doc section: :pub
   @doc """
   Sends an OSC command to SuperCollider (scynth or supernova) and returns a result.
 
@@ -274,7 +370,6 @@ defmodule SuperCollider.SoundServer do
   
   Note: If you don't need to return value, use `command/2` or `command/3` instead.
   """
-
   def sync_command(pid, command_name) do
     if is_valid_command?(command_name) do
       GenServer.call(pid, {:sync_command, command_name, []})
@@ -282,6 +377,15 @@ defmodule SuperCollider.SoundServer do
       {:error, "Invalid SuperCollider command or arity."}
     end
   end
+
+  @doc section: :pub
+  @doc """
+  Sends an OSC command with arguments to SuperCollider (scynth or supernova) and returns a result.
+
+  Behaves like a synchonous function.
+
+  Note: If you don't need to return value, use `command/2` or `command/3` instead.
+  """
 
   def sync_command(pid, command_name, args) when is_list(args) do
     if is_valid_command?(command_name, args) do
@@ -299,6 +403,7 @@ defmodule SuperCollider.SoundServer do
     end
   end
 
+  @doc section: :pub
   @doc """
   Sends an OSC command (asynchronous) to SuperCollider (scynth or supernova).
 
@@ -318,6 +423,12 @@ defmodule SuperCollider.SoundServer do
     end
   end
 
+  @doc section: :pub
+  @doc """
+  Sends an OSC command (asynchronous) with arguments to SuperCollider (scynth or supernova).
+  
+  Note: If you need a return value, use `sync_command/2` or `sync_command/3` instead.
+  """
   def command(pid, command_name, args) when is_list(args) do
     if is_valid_command?(command_name, args) do
       GenServer.cast(pid, {:command, command_name, args})
@@ -341,6 +452,7 @@ defmodule SuperCollider.SoundServer do
   defp is_valid_command?(command_name, args) when is_list(args), do: :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, length(args)+1)
   defp is_valid_command?(command_name, _args), do: :erlang.function_exported(SuperCollider.SoundServer.Command, command_name, 2)
 
+  @doc section: :impl
   @doc """
   When sending calls to scserver though UDP, a response message may be returned in the following format:
 
@@ -360,12 +472,14 @@ defmodule SuperCollider.SoundServer do
     {:noreply, new_state}
   end
 
+  @doc section: :impl
   @impl true
   def handle_info(_msg, state) do
     {:noreply, state}
   end
 
   # Core
+  @doc section: :pub
   @doc """
   A convience function to create a new SoundServer struct.
 
@@ -374,15 +488,16 @@ defmodule SuperCollider.SoundServer do
   The default values can be overrided by providing a keyword list using the same keys used in the struct. For example:
 
     ```
-    SoundServer.new(hostname: 'othersoundserver')
+    SoundServer.new(host: 'othersoundserver')
     ```
 
-    will override the default hostname of 'localhost'.
+    will override the default host of `'127.0.0.1'`.
 
   For more information, see the SoundServer struct documentation.
   """
   def new(opts \\ []), do: struct(__MODULE__, opts)
 
+  @doc section: :support
   @doc """
   Open's a UDP connection. Unless a port number is provided, by default it will use port 0.
 
@@ -390,6 +505,7 @@ defmodule SuperCollider.SoundServer do
   """
   def open(port_num \\ 0), do: :gen_udp.open(port_num, [:binary, {:active, true}])
 
+  @doc section: :support
   @doc """
   Runs the server. By default, this function is executed when init is called.
 
@@ -406,6 +522,7 @@ defmodule SuperCollider.SoundServer do
     end
   end
 
+  @doc section: :support
   @doc """
   Checks if scsynth is loaded by calling `scsynth_booted?/1`. If not it will attempt to boot it asynchronously using `Task.async/1`.
 
@@ -417,7 +534,7 @@ defmodule SuperCollider.SoundServer do
 
   Tip: If you want to shutdown the scynth or supernova process after it has booted, you can issue the `:quit` command, e.g. `SuperCollider.SoundServer.command(pid, :quit)`.
 
-  TODO: The location of the scysnth binary is currently set to the fixed locations above, but this will need to be moved out into a config or using different search strategies for different OSes.
+  TODO: The location of the scsynth binary is currently set to the fixed locations above, but this will need to be moved out into a config or using different search strategies for different OSes.
   """
   def maybe_boot_scsynth(soundserver) do
     Logger.info("#{soundserver.type} - waiting up to 3 seconds to see if already loaded ⏳")
@@ -444,6 +561,7 @@ defmodule SuperCollider.SoundServer do
 
   end
 
+  @doc section: :support
   @doc """
   Checks if scsynth or supernova is booted.
 
@@ -452,7 +570,7 @@ defmodule SuperCollider.SoundServer do
   It then waits up to 3 seconds to see if a UDP packet is returned.
 
   This function returns:
-  - `{true, soundserver}` if if a '/status.reply' message was recieved via UDP. The soundserver state will be updated/
+  - `{true, soundserver}` if if a '/status.reply' message was recieved via UDP. The soundserver state will be updated.
   - `{false, soundserver}` if either a non-compliant message is recieved or no message is recieved after 5 seconds. In this case the scsynth has been considered not to be loaded.
 
   Note: an UDP socket must be set on the `%SoundServer{}` state, e.g.:
@@ -461,8 +579,7 @@ defmodule SuperCollider.SoundServer do
   soundserver =
     %SuperCollider.SoundServer{
       socket: #Port<0.8>, # Socket established here, otherwise this would be nil
-      ip: '127.0.0.1',
-      hostname: 'localhost',
+      host: '127.0.0.1',
       port: 57110,
       type: :scsynth,
       client_id: 0,
@@ -482,8 +599,7 @@ defmodule SuperCollider.SoundServer do
   # Returns SoundServer struct with socket populated:
   # %SuperCollider.SoundServer{
   #   socket: #Port<0.9>,
-  #   ip: '127.0.0.1',
-  #   hostname: 'localhost',
+  #   host: '127.0.0.1',
   #   port: 57110,
   #   type: :scsynth,
   #   client_id: 0,
@@ -492,9 +608,32 @@ defmodule SuperCollider.SoundServer do
 
   SuperCollider.SoundServer.scsynth_booted?(soundserver)
 
-  # If already booted returns true
+  # If already booted returns a tuple of {true, soundserver}
   # 11:53:43.734 [info] scsynth - already booted ✅
-  # {true, soundserver}
+  # {true,
+  #  %SuperCollider.SoundServer{
+  #    host: ~c"127.0.0.1",
+  #    port: 57110,
+  #    socket: #Port<0.13>,
+  #    type: :scsynth,
+  #    booted?: false,
+  #    client_id: 0,
+  #    max_logins: nil,
+  #    responses: %{
+  #      status: %SuperCollider.Message.Status{
+  #        unused: 1,
+  #        num_ugens: 0,
+  #        num_synths: 0,
+  #        num_groups: 1,
+  #        num_synthdefs_loaded: 5,
+  #        avg_cpu: 0.026431389153003693,
+  #        peak_cpu: 0.07823443412780762,
+  #        nominal_sample_rate: 44100.0,
+  #        actual_sample_rate: 44099.966771616244
+  #      }
+  #    },
+  #    from: nil
+  #  }}
   ```
 
   Sockets are automatically created when SoundServer is booted in the typical way through `SuperCollider.SoundServer.start_link` or `SuperCollider.start_link`.
@@ -510,7 +649,7 @@ defmodule SuperCollider.SoundServer do
 
         Logger.info("#{soundserver.type} - already booted ✅")
 
-        # Update SoundServer state with version information
+        # Update SoundServer state with status information
         status_info = SuperCollider.Message.Status.parse(arguments)
         Logger.notice("Status: #{inspect(status_info)}")
         soundserver= %{soundserver | responses: Map.put(soundserver.responses, :status, status_info)}

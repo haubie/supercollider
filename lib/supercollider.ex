@@ -50,8 +50,7 @@ defmodule SuperCollider do
 
   ## Options
   Additionally, this function can take options:
-  - `ip:` the IP address of scserver. This defaults to '127.0.0.1'
-  - `hostname:` the hostname of the server. This defaults to 'localhost'.
+  - `host:` the IP address or hostname of scserver. This defaults to `'127.0.0.1'`, but could be set to a hostname such as `'localhost'`.
   - `port:` the port used to communicate with scserver. This defaults to 57110.
   - `socket:` the UDP socket used to communicate with scserver, once the connection is open.
   - `type:` the server type being used, accepts :scsynth (default) or :supernova (multicore)
@@ -94,8 +93,7 @@ defmodule SuperCollider do
 
   ## Returns the populated SoundServer struct
   # %SuperCollider.SoundServer{
-  #   ip: '127.0.0.1',
-  #   hostname: 'localhost',
+  #   host: '127.0.0.1',
   #   port: 57110,
   #   socket: #Port<0.12>,
   #   type: :supernova,
@@ -125,6 +123,30 @@ defmodule SuperCollider do
         |> Map.get(:responses)
     end
   end
+
+  @doc """
+  Clears values under the SuperCollider state's `:responses` key with an empty value.
+
+  By default, if no key is given, the `:fail` key is cleared.
+
+  Multiple keys can be given as a list.
+
+  ## Example:
+  ```
+  # Clear the :fail list (will become an empty list)
+  SuperCollider.clear_responses(:fail)
+
+  # Clear the :version and :status values (will become nil values)
+  SuperCollider.clear_responses(pid, [:version, :status])
+  ```
+  """
+  def clear_responses(key \\ :fail) do
+    case :persistent_term.get(:supercollider_soundserver, nil) do
+      nil -> {:error, "Global SuperCollider.SoundServer pid not stored as a persistient term under :supercollider_soundserver"}
+      pid -> SoundServer.clear_responses(pid, key)
+    end
+  end
+
 
   @doc """
   Get's a specific OSC response stored in the state of the server, by it's key. If no response is available for the specific key, `nil` is returned.
