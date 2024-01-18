@@ -192,6 +192,42 @@ defmodule SuperCollider do
     end
   end
 
+  @doc """
+  Add one or more callback function(s) which will receive and handle SuperCollider response messages.
+
+  A single callback function or multiple callback functions can be provided in a list.
+
+  Adding callback functions can be a way to achieve a reactive style of programming, for when your application needs to respond to particular `SuperCollider.Message` types.
+
+  ## Example
+  ```
+  alias SuperCollider.SoundServer
+
+  # Start your Listener process
+  SuperCollider.start_link()
+
+  # Add a single handler
+  SuperCollider.add_handler(fn msg -> IO.inspect msg, label: "Inspecting msg" end)
+
+  # Add multiple handlers in a list
+  SuperCollider.add_handler(
+    [
+      fn msg -> IO.inspect msg, label: "Msg handler 1" end,
+      fn msg -> IO.inspect msg, label: "Msg handler 1" end,
+    ]
+  )
+
+  # If you've defined your hander function in a module function, pass it the usual way:
+  SuperCollider.add_handler(&MyModule.function_name/1)
+  ```
+  """
+  def add_handler(handler_fn) do
+    case :persistent_term.get(:supercollider_soundserver, nil) do
+      nil -> {:error, "Global SuperCollider.SoundServer pid not stored as a persistient term under :supercollider_soundserver"}
+      pid -> SoundServer.add_handler(pid, handler_fn)
+    end
+  end
+
 
   @doc """
   Returns the PID of the SoundServer stored as a persistent_term as :supercollider_soundserver.

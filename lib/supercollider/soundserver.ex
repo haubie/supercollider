@@ -13,6 +13,7 @@ defmodule SuperCollider.SoundServer do
   - `sync_command/2` or `sync_command/3` for sending commands to scsynth or supernova synchronously, waiting for a result to be returned
   - `state/1` to get the current state of the `SoundServer` GenServer.
   - `clear_responses/2` to clear values in the responses map (`%SoundServer{responses: %{...}}`). By default, clears the `:fail` messages.
+  - `add_handler/2` to add one or more callback function(s) which will receive and handle SuperCollider response messages.
 
   ### Sync vs. async
   The difference between `sync_command/2` and `command/2` functions is that if you need to wait around for a response from a command or not. In most cases you'll probably just use the async `command/2` or `command/3`.
@@ -138,6 +139,7 @@ defmodule SuperCollider.SoundServer do
   - `client_id`: the client id given to this GenServer process by the scynth or supernova.
   - `max_logins`: the maximum number of logins that scynth or supernova reported being able to handle.
   - `from`: holds the 'from' (the PID and reference id) when the `sync_command` function is called.
+  - `callback`: holds a list of functions called when a SuperCollider resppnse message is received. The callback must be of single arity and take it's first parameter a message. See `add_handler/2` for an example.
   """
   defstruct host: '127.0.0.1',
             port: 57110,
@@ -147,7 +149,8 @@ defmodule SuperCollider.SoundServer do
             client_id: 0,
             max_logins: nil,
             responses: %{fail: []},
-            from: nil
+            from: nil,
+            callback: []
 
   # Genserver callbacks
 
@@ -266,6 +269,15 @@ defmodule SuperCollider.SoundServer do
     {:reply, state, state}
   end
 
+  @doc section: :impl
+  @impl true
+  def handle_call({:sync_command, command_name, args}, from, state) do
+    state = %{state | from: from}
+    new_state = apply(Command, command_name, [state] ++ args)
+    {:noreply, new_state}
+  end
+
+
   @doc section: :pub
   @doc """
   Returns the current state of the server.
@@ -345,17 +357,53 @@ defmodule SuperCollider.SoundServer do
 
   @doc section: :impl
   @impl true
-  def handle_cast({:command, command_name, args}, state) do
-    new_state = apply(Command, command_name, [state] ++ args)
+  def handle_cast({:add_handler, handler_fn}, state) do
+    handler_fn = if is_list(handler_fn), do: handler_fn, else: [handler_fn]
+    new_state = %__MODULE__{state | callback: handler_fn ++ state.callback}
     {:noreply, new_state}
   end
 
   @doc section: :impl
   @impl true
-  def handle_call({:sync_command, command_name, args}, from, state) do
-    state = %{state | from: from}
+  def handle_cast({:command, command_name, args}, state) do
     new_state = apply(Command, command_name, [state] ++ args)
     {:noreply, new_state}
+  end
+
+
+  @doc section: :pub
+  @doc """
+  Add one or more callback function(s) which will receive and handle SuperCollider response messages.
+
+  A single callback function or multiple callback functions can be provided in a list.
+
+  Adding callback functions can be a way to achieve a reactive style of programming, for when your application needs to respond to particular `SuperCollider.Message` types.
+
+  ## Example
+  ```
+  alias SuperCollider.SoundServer
+
+  # Start your SoundServer process
+  {:ok, pid} = SoundServer.start_link()
+
+  # Add a single handler
+  SoundServer.add_handler(pid, fn msg -> IO.inspect msg, label: "Inspecting msg" end)
+
+  # Add multiple handlers in a list
+  SoundServer.add_handler(
+    pid,
+    [
+      fn msg -> IO.inspect msg, label: "Msg handler 1" end,
+      fn msg -> IO.inspect msg, label: "Msg handler 1" end,
+    ]
+  )
+
+  # If you've defined your hander function in a module function, pass it the usual way:
+  SoundServer.add_handler(pid, &MyModule.function_name/1)
+  ```
+  """
+  def add_handler(pid, handler_fn) do
+    GenServer.cast(pid, {:add_handler, handler_fn})
   end
 
   @doc section: :pub
@@ -468,7 +516,14 @@ defmodule SuperCollider.SoundServer do
   @impl true
   def handle_info({:udp, _process_port, _ip_addr, _port_num, res}, state) do
     {new_state, message} = Response.process_osc_message(state, res)
+    
+    # Call any registered listeners functions
+    # TODO: Consider doing this in a Task
+    Enum.each(state.callback, fn callback_fn -> callback_fn.(message) end)
+
+    # Return a value synchronously if required
     if state.from, do: GenServer.reply(state.from, message)
+
     {:noreply, new_state}
   end
 
