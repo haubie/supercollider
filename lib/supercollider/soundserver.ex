@@ -91,7 +91,8 @@ defmodule SuperCollider.SoundServer do
             booted?: false,
             client_id: 0,
             max_logins: nil,
-            responses: %{}
+            responses: %{},
+            from: nil
 
   # Genserver callbacks
 
@@ -254,14 +255,60 @@ defmodule SuperCollider.SoundServer do
     {:noreply, new_state}
   end
 
-  @doc """
-  Sends an OSC command to SuperCollider (scynth or supernova).
 
-  `SuperCollider.SoundServer.command(pid, :version)` will sendthe OSC 'version' command.
+  @impl true
+  def handle_call({:sync_command, command_name, args}, from, state) do
+    state = %{state | from: from}
+    new_state = apply(Command, command_name, [state] ++ args)
+    {:noreply, new_state}
+  end
+
+  @doc """
+  Sends an OSC command to SuperCollider (scynth or supernova) and returns a result.
+
+  Behaves like a synchonous function.
 
   Optionally accepts arguments, depending on the command being called.
 
   Commands must be a valid commmand (function in the SuperCollider.SoundServer.Command module) and match it's arity, otherwise an {:error, reason} tuple ie returned.
+  
+  Note: If you don't need to return value, use `command/2` or `command/3` instead.
+  """
+
+  def sync_command(pid, command_name) do
+    if is_valid_command?(command_name) do
+      GenServer.call(pid, {:sync_command, command_name, []})
+    else
+      {:error, "Invalid SuperCollider command or arity."}
+    end
+  end
+
+  def sync_command(pid, command_name, args) when is_list(args) do
+    if is_valid_command?(command_name, args) do
+      GenServer.call(pid, {:sync_command, command_name, args})
+    else
+      {:error, "Invalid SuperCollider command or arity."}
+    end
+  end
+
+  def sync_command(pid, command_name, args) do
+    if is_valid_command?(command_name, args)  do
+      GenServer.call(pid, {:sync_command, command_name, [args]})
+    else
+      {:error, "Invalid SuperCollider command or arity."}
+    end
+  end
+
+  @doc """
+  Sends an OSC command (asynchronous) to SuperCollider (scynth or supernova).
+
+  `SuperCollider.SoundServer.command(pid, :version)` will send the OSC 'version' command.
+
+  Optionally accepts arguments, depending on the command being called.
+
+  Commands must be a valid commmand (function in the SuperCollider.SoundServer.Command module) and match it's arity, otherwise an {:error, reason} tuple ie returned.
+  
+  Note: If you need a return value, use `sync_command/2` or `sync_command/3` instead.
   """
   def command(pid, command_name) do
      if is_valid_command?(command_name) do
@@ -303,19 +350,19 @@ defmodule SuperCollider.SoundServer do
   The handler code returns an updated SoundServer struct so that a valid state is maintained.
 
   To get the messages, use `SuperCollider.SoundServer.state(<pid>).responses` where <pid> is the process id of the SoundServer, or `SuperCollider.response()` if using the top-level API.
+
+  Alternatively, to get messages returned from commands synchronously, use the `sync_command` functions.
   """
   @impl true
-  def handle_info(msg, state) do
-    new_state =
-      case msg do
-        {:udp, _process_port, _ip_addr, _port_num, res} ->
-          Response.process_osc_message(state, res)
-
-        _ ->
-          state
-      end
-
+  def handle_info({:udp, _process_port, _ip_addr, _port_num, res}, state) do
+    {new_state, message} = Response.process_osc_message(state, res)
+    if state.from, do: GenServer.reply(state.from, message)
     {:noreply, new_state}
+  end
+
+  @impl true
+  def handle_info(_msg, state) do
+    {:noreply, state}
   end
 
   # Core
@@ -367,6 +414,8 @@ defmodule SuperCollider.SoundServer do
   - Mac: /Applications/SuperCollider.app/Contents/Resources/
   - Linux: /usr/local/
   - Windows: \\Program Files\\SuperCollider\\
+
+  Tip: If you want to shutdown the scynth or supernova process after it has booted, you can issue the `:quit` command, e.g. `SuperCollider.SoundServer.command(pid, :quit)`.
 
   TODO: The location of the scysnth binary is currently set to the fixed locations above, but this will need to be moved out into a config or using different search strategies for different OSes.
   """

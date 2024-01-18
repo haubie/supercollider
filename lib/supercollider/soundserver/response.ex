@@ -76,6 +76,10 @@ defmodule SuperCollider.SoundServer.Response do
   Accepts a %SoundServer{} as the first parameter and the OSC response message as the second.
 
   The OSC messages received from scynth or supernova are converted into one of the `SuperCollider.Message` structs. See the `SuperCollider.Message` documentation for the complete list.
+
+  Returns a tuple in the format `{soundserver, message}` where:
+  - soundserver is the potentially updated soundserver state
+  - message is one of the `SuperCollider.Message` structs or `nil`.
   """
   def process_osc_message(soundserver, res) do
     message = OSCx.decode(res)
@@ -87,67 +91,72 @@ defmodule SuperCollider.SoundServer.Response do
       %{address: "/version.reply", arguments: arguments} ->
         version_info = Message.Version.parse(arguments)
         Logger.notice("Version: #{inspect(version_info)}")
-        put_response(soundserver, :version, version_info)
+        {put_response(soundserver, :version, version_info), version_info}
 
       %{address: "/status.reply", arguments: arguments} ->
         status_info = Message.Status.parse(arguments)
         Logger.notice("Status: #{inspect(status_info)}")
-        put_response(soundserver, :status, status_info)
+        {put_response(soundserver, :status, status_info), status_info}
     
       %{address: "/g_queryTree.reply", arguments: arguments} ->
         tree = Message.QueryTree.parse(arguments)
         Logger.info("Group tree: #{inspect(tree)}")
-        soundserver  
+        {soundserver, tree}  
 
       ## In case the client was already registered and tries to register again (after a reboot or network problem),
       ## scsynth sends back a failed message AND the client this client had earlier, and the client will use that client id.
       ## Error is shown as a warning in this case and the client id reassigned to the soundserver state.
       %{address: "/fail", arguments: ["/notify", _message, client_id]=arguments} ->
         error = Message.Error.parse(arguments)
-        Logger.warning("Previously registered at client id: #{client_id}. Message: #{inspect error}")
-        %SoundServer{soundserver | client_id: client_id}
-        |> put_response(:fail, error)
+        Logger.warning("Previously registered at client id: #{client_id}. Message: #{inspect error}")  
+        {
+          put_response(%SoundServer{soundserver | client_id: client_id}, :fail, error),
+          error
+        }
 
       %{address: "/fail", arguments: arguments} ->
         IO.inspect arguments, label: "fail args"
         error = Message.Error.parse(arguments)
         Logger.error(inspect(error))
-        put_response(soundserver, :fail, error)
+        {put_response(soundserver, :fail, error), error}
 
       %{address: "/late", arguments: arguments} ->
         notification = Message.Late.parse(arguments)
         Logger.warning("Late: #{inspect(notification)}")
-        soundserver
+        {soundserver, notification}
 
       %{address: "/done", arguments: ["/notify" | rest_args]=_arguments} ->
         notification = Message.Notify.parse(rest_args)
         Logger.info("Notify: #{inspect(notification)}")
-        %SoundServer{soundserver | client_id: notification.client_id, max_logins: notification.max_logins}
+        {
+          %SoundServer{soundserver | client_id: notification.client_id, max_logins: notification.max_logins},
+          notification
+        }
 
       %{address: "/done", arguments: arguments} ->
         notification = Message.Done.parse(arguments)
         Logger.info("Done: #{inspect(notification)}")
-        soundserver
+        {soundserver, notification}
 
       %{address: "/synced", arguments: arguments} ->
         notification = Message.Sync.parse(arguments)
         Logger.info("Synced: #{inspect(notification)}")
-        soundserver
+        {soundserver, notification}
    
       %{address: <<"/n_", _rest::binary>>=address, arguments: arguments} ->
         notification = Message.Node.parse(address, arguments)
         Logger.info("Node #{address}: #{inspect(notification)}")
-        soundserver
+        {soundserver, notification}
 
       %{address: "/tr", arguments: arguments} ->
         trigger = Message.Trigger.parse(arguments)
         Logger.info("Trigger: #{inspect(trigger)}")
-        soundserver    
+        {soundserver, trigger}    
 
       msg ->
         # Ignore message
         Logger.info("Non matched message: #{inspect(msg)}")
-        soundserver
+        {soundserver, nil}
     end
 
   end

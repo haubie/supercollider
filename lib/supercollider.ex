@@ -177,10 +177,12 @@ defmodule SuperCollider do
   def pid, do: :persistent_term.get(:supercollider_soundserver, nil)
 
   @doc """
-  Send a command to the default SoundServer.
+  Send a command (asynchronously) to the default SoundServer.
 
   This function accepts the following parameters:
   * command, in a form of an atom representing SuperCollider commands (See: `SuperCollider.SoundServer.Command` for details)
+
+  If you want to return the value from a command directly, use `sync_command/1` instead.
 
   ## Examples
   ```
@@ -193,6 +195,29 @@ defmodule SuperCollider do
     case :persistent_term.get(:supercollider_soundserver, nil) do
       nil -> {:error, "Global SuperCollider.SoundServer pid not stored as a persistient term under :supercollider_soundserver"}
       pid -> SoundServer.command(pid, command_name)
+    end
+  end
+
+  @doc """
+  Send a command to the default SoundServer and returns the result once received.
+
+  This behaves like a synchronous function even though the underlying GenServer is asynchronous.
+
+  This function accepts the following parameters:
+  * command, in a form of an atom representing SuperCollider commands (See: `SuperCollider.SoundServer.Command` for details)
+
+  If you don't need a return value from a command, use the `command/1` instead.
+
+  ## Examples
+  ```
+  # Get the server's status
+  SuperCollider.sync_command(:status) # Make the call
+  ```
+  """
+  def sync_command(command_name, args \\ []) do
+    case :persistent_term.get(:supercollider_soundserver, nil) do
+      nil -> {:error, "Global SuperCollider.SoundServer pid not stored as a persistient term under :supercollider_soundserver"}
+      pid -> SoundServer.sync_command(pid, command_name, args)
     end
   end
 
