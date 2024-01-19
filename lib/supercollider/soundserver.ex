@@ -379,6 +379,8 @@ defmodule SuperCollider.SoundServer do
 
   Adding callback functions can be a way to achieve a reactive style of programming, for when your application needs to respond to particular `SuperCollider.Message` types.
 
+  Each time the handler function is called, it is wraped in an Elixir `Task` for error isolation and to ensure it doesn't block the SoundServer.
+
   ## Example
   ```
   alias SuperCollider.SoundServer
@@ -402,7 +404,7 @@ defmodule SuperCollider.SoundServer do
   SoundServer.add_handler(pid, &MyModule.function_name/1)
   ```
   """
-  def add_handler(pid, handler_fn) do
+  def add_handler(pid, handler_fn) when is_function(handler_fn, 1) or is_list(handler_fn) do
     GenServer.cast(pid, {:add_handler, handler_fn})
   end
 
@@ -511,15 +513,14 @@ defmodule SuperCollider.SoundServer do
 
   To get the messages, use `SuperCollider.SoundServer.state(<pid>).responses` where <pid> is the process id of the SoundServer, or `SuperCollider.response()` if using the top-level API.
 
-  Alternatively, to get messages returned from commands synchronously, use the `sync_command` functions.
+  Alternatively, to get messages returned from commands synchronously, use the `sync_command` functions, or use `add_handler/1` to add your own reactive function to `SuperCollider.Message` messages.
   """
   @impl true
   def handle_info({:udp, _process_port, _ip_addr, _port_num, res}, state) do
     {new_state, message} = Response.process_osc_message(state, res)
     
-    # Call any registered listeners functions
-    # TODO: Consider doing this in a Task
-    Enum.each(state.callback, fn callback_fn -> callback_fn.(message) end)
+    # Call any registered listeners functions. Each callback is run in a separate unlinked Task.
+    Enum.each(state.callback, &Task.start(fn -> &1.(message) end))
 
     # Return a value synchronously if required
     if state.from, do: GenServer.reply(state.from, message)
@@ -532,6 +533,8 @@ defmodule SuperCollider.SoundServer do
   def handle_info(_msg, state) do
     {:noreply, state}
   end
+
+
 
   # Core
   @doc section: :pub
