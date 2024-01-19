@@ -236,6 +236,10 @@ defmodule SuperCollider.SoundServer do
   `{SuperCollider.SoundServer, name: :soundserver}`
 
   as a child of your supervisor. The `name:` is optional and is the registered name you'd like for the `SuperCollider.SoundServer` process.
+
+  If you have a callback function you want to register to handle SuperCollider server messages, you can add the handler as follows:
+
+  `{SuperCollider.SoundServer, name: :soundserver, callback: [&Symphonia.MessageBroadcaster.broadcast(&1)]}`
   
   For example, if you were writing a Phoenix based web-app musical app, you'd could add it to the `application.ex` file as follows:
 
@@ -381,7 +385,8 @@ defmodule SuperCollider.SoundServer do
 
   Each time the handler function is called, it is wraped in an Elixir `Task` for error isolation and to ensure it doesn't block the SoundServer.
 
-  ## Example
+  ## Examples
+  ### Basic example
   ```
   alias SuperCollider.SoundServer
 
@@ -402,6 +407,58 @@ defmodule SuperCollider.SoundServer do
 
   # If you've defined your hander function in a module function, pass it the usual way:
   SoundServer.add_handler(pid, &MyModule.function_name/1)
+  ```
+  ### Phoenix PubSub example
+  This example shows how it can be used to support a more reative style of programming, for example, using Phoenix PubSub to alert a Live View of a change.
+  
+  Add the broadcast function to the SoundServer, in this case using the topic "scmsg" to represent SuperCollider messages
+  ```
+  SuperCollider.SoundServer.add_handler(:soundserver, &Phoenix.PubSub.broadcast(Symphonia.PubSub, "scmsg", &1))
+  ```
+  This could also be done via your application's supervisor in application.ex, for e.g.:
+  ```
+  def start(_type, _args) do
+    children = [
+      SymphoniaWeb.Telemetry,
+      {DNSCluster, query: Application.get_env(:symphonia, :dns_cluster_query) || :ignore},
+      {Phoenix.PubSub, name: Symphonia.PubSub},
+      {SuperCollider.SoundServer, name: :soundserver, callback: [&Phoenix.PubSub.broadcast(Symphonia.PubSub, "scmsg", {:soundserver, &1})]},
+      SymphoniaWeb.Endpoint,
+    ]
+
+    opts = [strategy: :one_for_one, name: Symphonia.Supervisor]
+    Supervisor.start_link(children, opts)
+  end
+  ```
+
+  In your Live View's mount function, subscribe to the PubSub topic and add a handle_info to attach messages to socket:
+  ```
+  def render(assigns) do
+    ~H\"""
+    <h2>SuperCollider messages</h2>
+    <%= if @server_messages != [] do %>
+    <ul>
+          <%= for msg <- @server_messages do %>
+          <li><%= inspect msg %></li>
+          <% end %>
+    </ul>
+    <% else %>
+      <p>No messages</p>
+    <% end %>
+    \"""
+  end
+  
+  def mount(_params, _session, socket) do
+    if connected?(socket), do: PubSub.subscribe(Symphonia.PubSub, "scmsg")
+    {:ok, socket |> server_messages() }
+  end
+
+  def handle_info({:soundserver, msg}, socket) do
+    {:noreply, socket |> update_server_messages(msg)}
+  end
+
+  defp server_messages(socket), do: assign(socket, :server_messages, [])
+  defp update_server_messages(socket, msg), do: update(socket, :server_messages, &([msg] ++ &1))
   ```
   """
   def add_handler(pid, handler_fn) when is_function(handler_fn, 1) or is_list(handler_fn) do
